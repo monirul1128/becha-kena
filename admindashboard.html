@@ -1,0 +1,2218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BechaKena Hub - Admin Dashboard</title>
+
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+:root{
+    --primary:#6366f1;
+    --primary-dark:#4f46e5;
+    --success:#10b981;
+    --warning:#f59e0b;
+    --processing:#3b82f6;
+    --danger:#ef4444;
+    --bg:#f8fafc;
+    --card:#fff;
+    --text:#1e293b;
+    --muted:#64748b;
+    --border:#e2e8f0;
+    --sidebar:#111827;
+}
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    font-family:"Segoe UI",Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+}
+
+button,input,select,textarea{
+    font-family:inherit;
+}
+
+button{
+    cursor:pointer;
+}
+
+/* SIDEBAR */
+.sidebar{
+    position:fixed;
+    left:0;
+    top:0;
+    width:250px;
+    height:100vh;
+    background:var(--sidebar);
+    color:#fff;
+    padding:20px 14px;
+    z-index:1000;
+    overflow-y:auto;
+}
+
+.logo{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:10px 12px 25px;
+    font-size:20px;
+    font-weight:700;
+}
+
+.logo-icon{
+    width:42px;
+    height:42px;
+    border-radius:12px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:var(--primary);
+}
+
+.nav-title{
+    color:#94a3b8;
+    font-size:11px;
+    text-transform:uppercase;
+    margin:15px 12px 8px;
+}
+
+.nav-item{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    color:#cbd5e1;
+    padding:13px 14px;
+    margin:4px 0;
+    border-radius:12px;
+    text-decoration:none;
+    transition:.2s;
+}
+
+.nav-item:hover,
+.nav-item.active{
+    background:var(--primary);
+    color:#fff;
+}
+
+.nav-item i{
+    width:20px;
+    text-align:center;
+}
+
+/* MAIN */
+.main{
+    margin-left:250px;
+    min-height:100vh;
+}
+
+.header{
+    height:70px;
+    background:#fff;
+    border-bottom:1px solid var(--border);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 25px;
+    position:sticky;
+    top:0;
+    z-index:900;
+}
+
+.header-left{
+    display:flex;
+    align-items:center;
+    gap:15px;
+}
+
+.menu-btn{
+    display:none;
+    border:0;
+    background:#f1f5f9;
+    width:40px;
+    height:40px;
+    border-radius:10px;
+}
+
+.header-title{
+    font-size:20px;
+    font-weight:700;
+}
+
+.header-actions{
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+
+.icon-btn{
+    width:40px;
+    height:40px;
+    border:1px solid var(--border);
+    background:#fff;
+    border-radius:10px;
+    color:var(--muted);
+}
+
+.profile{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding-left:8px;
+}
+
+.avatar{
+    width:40px;
+    height:40px;
+    border-radius:50%;
+    background:var(--primary);
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+/* CONTENT */
+.content{
+    padding:25px;
+}
+
+.page{
+    display:none;
+}
+
+.page.active{
+    display:block;
+}
+
+/* WELCOME */
+.welcome{
+    background:linear-gradient(135deg,#6366f1,#4f46e5);
+    color:#fff;
+    border-radius:18px;
+    padding:25px;
+    margin-bottom:22px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.welcome h2{
+    margin-bottom:7px;
+}
+
+.welcome p{
+    opacity:.85;
+}
+
+.welcome-icon{
+    font-size:55px;
+    opacity:.2;
+}
+
+/* STATS */
+.stats-grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:16px;
+    margin-bottom:22px;
+}
+
+.stat-card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:18px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.stat-info small{
+    color:var(--muted);
+    font-size:13px;
+}
+
+.stat-info h3{
+    font-size:25px;
+    margin-top:5px;
+}
+
+.stat-icon{
+    width:48px;
+    height:48px;
+    border-radius:14px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#eef2ff;
+    color:var(--primary);
+    font-size:20px;
+}
+
+/* CARD */
+.card{
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:20px;
+    margin-bottom:20px;
+}
+
+.card-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:15px;
+    margin-bottom:18px;
+}
+
+.card-title{
+    font-size:17px;
+    font-weight:700;
+}
+
+.grid-2{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:20px;
+}
+
+/* QUICK ACTION */
+.quick-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:15px;
+}
+
+.quick{
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:18px;
+    background:#fff;
+    display:flex;
+    align-items:center;
+    gap:14px;
+    cursor:pointer;
+    transition:.2s;
+}
+
+.quick:hover{
+    transform:translateY(-2px);
+    border-color:var(--primary);
+}
+
+.quick i{
+    width:45px;
+    height:45px;
+    border-radius:12px;
+    background:#eef2ff;
+    color:var(--primary);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+/* BUTTON */
+.btn{
+    border:0;
+    padding:10px 15px;
+    border-radius:10px;
+    font-weight:600;
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+}
+
+.btn-primary{
+    background:var(--primary);
+    color:#fff;
+}
+
+.btn-success{
+    background:var(--success);
+    color:#fff;
+}
+
+.btn-warning{
+    background:var(--warning);
+    color:#fff;
+}
+
+.btn-danger{
+    background:var(--danger);
+    color:#fff;
+}
+
+.btn-light{
+    background:#f1f5f9;
+    color:var(--text);
+}
+
+/* FORM */
+.form-grid{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:16px;
+}
+
+.form-group{
+    margin-bottom:4px;
+}
+
+.form-group.full{
+    grid-column:1/-1;
+}
+
+.form-group label{
+    display:block;
+    margin-bottom:7px;
+    font-size:13px;
+    font-weight:600;
+}
+
+.form-control{
+    width:100%;
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:11px 12px;
+    outline:none;
+    background:#fff;
+}
+
+.form-control:focus{
+    border-color:var(--primary);
+}
+
+/* TABLE */
+.table-wrap{
+    overflow-x:auto;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    min-width:800px;
+}
+
+th,td{
+    padding:13px 12px;
+    border-bottom:1px solid var(--border);
+    text-align:left;
+    font-size:13px;
+}
+
+th{
+    background:#f8fafc;
+    color:#475569;
+    font-weight:700;
+}
+
+.actions{
+    display:flex;
+    gap:6px;
+}
+
+.action-btn{
+    width:34px;
+    height:34px;
+    border:0;
+    border-radius:8px;
+}
+
+.edit{
+    background:#eef2ff;
+    color:var(--primary);
+}
+
+.delete{
+    background:#fef2f2;
+    color:var(--danger);
+}
+
+.view{
+    background:#eff6ff;
+    color:var(--processing);
+}
+
+/* STATUS */
+.status{
+    display:inline-flex;
+    padding:5px 9px;
+    border-radius:20px;
+    font-size:11px;
+    font-weight:700;
+}
+
+.status.pending{
+    background:#fff7ed;
+    color:#ea580c;
+}
+
+.status.processing{
+    background:#eff6ff;
+    color:#2563eb;
+}
+
+.status.delivered,
+.status.approved,
+.status.paid{
+    background:#ecfdf5;
+    color:#059669;
+}
+
+.status.cancelled{
+    background:#fef2f2;
+    color:#dc2626;
+}
+
+.status.unpaid{
+    background:#f1f5f9;
+    color:#64748b;
+}
+
+/* TABS */
+.tabs{
+    display:flex;
+    gap:8px;
+    overflow-x:auto;
+    margin-bottom:18px;
+}
+
+.tab{
+    white-space:nowrap;
+    border:1px solid var(--border);
+    background:#fff;
+    color:var(--muted);
+    padding:9px 15px;
+    border-radius:9px;
+    cursor:pointer;
+}
+
+.tab.active{
+    background:var(--primary);
+    border-color:var(--primary);
+    color:#fff;
+}
+
+/* BATCH */
+.batch-steps{
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:10px;
+    margin-bottom:20px;
+}
+
+.batch-step{
+    padding:16px;
+    border:1px solid var(--border);
+    border-radius:13px;
+    text-align:center;
+    background:#fff;
+}
+
+.batch-step i{
+    display:block;
+    color:var(--primary);
+    font-size:22px;
+    margin-bottom:7px;
+}
+
+.batch-step strong{
+    font-size:13px;
+}
+
+/* INFO */
+.info-grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:12px;
+}
+
+.info-box{
+    background:#f8fafc;
+    border-radius:12px;
+    padding:15px;
+}
+
+.info-box small{
+    color:var(--muted);
+}
+
+.info-box strong{
+    display:block;
+    font-size:18px;
+    margin-top:4px;
+}
+
+/* MOBILE NAV */
+.mobile-nav{
+    display:none;
+}
+
+/* RESPONSIVE */
+@media(max-width:1100px){
+    .stats-grid{
+        grid-template-columns:repeat(2,1fr);
+    }
+
+    .batch-steps{
+        grid-template-columns:repeat(3,1fr);
+    }
+
+    .info-grid{
+        grid-template-columns:repeat(2,1fr);
+    }
+}
+
+@media(max-width:800px){
+    .sidebar{
+        transform:translateX(-100%);
+        transition:.25s;
+    }
+
+    .sidebar.open{
+        transform:translateX(0);
+    }
+
+    .main{
+        margin-left:0;
+    }
+
+    .menu-btn{
+        display:block;
+    }
+
+    .grid-2{
+        grid-template-columns:1fr;
+    }
+
+    .quick-grid{
+        grid-template-columns:1fr;
+    }
+
+    .form-grid{
+        grid-template-columns:1fr;
+    }
+
+    .mobile-nav{
+        position:fixed;
+        bottom:0;
+        left:0;
+        right:0;
+        height:65px;
+        background:#fff;
+        border-top:1px solid var(--border);
+        display:flex;
+        justify-content:space-around;
+        align-items:center;
+        z-index:1000;
+    }
+
+    .mobile-nav button{
+        border:0;
+        background:none;
+        color:var(--muted);
+        font-size:11px;
+    }
+
+    .mobile-nav i{
+        display:block;
+        font-size:18px;
+        margin-bottom:3px;
+    }
+
+    .mobile-nav button.active{
+        color:var(--primary);
+    }
+
+    .content{
+        padding:16px;
+        padding-bottom:80px;
+    }
+
+    .profile span{
+        display:none;
+    }
+}
+
+@media(max-width:550px){
+    .stats-grid{
+        grid-template-columns:1fr 1fr;
+        gap:10px;
+    }
+
+    .stat-card{
+        padding:13px;
+    }
+
+    .stat-info h3{
+        font-size:21px;
+    }
+
+    .stat-icon{
+        width:40px;
+        height:40px;
+    }
+
+    .welcome{
+        padding:18px;
+    }
+
+    .welcome-icon{
+        display:none;
+    }
+
+    .batch-steps{
+        grid-template-columns:1fr 1fr;
+    }
+
+    .info-grid{
+        grid-template-columns:1fr 1fr;
+    }
+
+    .header-title{
+        font-size:16px;
+    }
+
+    .header{
+        padding:0 15px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+
+    <div class="logo">
+        <div class="logo-icon">
+            <i class="fa-solid fa-cart-shopping"></i>
+        </div>
+        <span>BechaKena Hub</span>
+    </div>
+
+    <div class="nav-title">Main</div>
+
+    <a class="nav-item active" onclick="showPage('home',this)">
+        <i class="fa-solid fa-house"></i> Home
+    </a>
+
+    <a class="nav-item" onclick="showPage('customer',this)">
+        <i class="fa-solid fa-users"></i> Customer Management
+    </a>
+
+    <a class="nav-item" onclick="showPage('product',this)">
+        <i class="fa-solid fa-box"></i> Product Management
+    </a>
+
+    <a class="nav-item" onclick="showPage('reseller',this)">
+        <i class="fa-solid fa-user-tie"></i> Reseller Management
+    </a>
+
+    <a class="nav-item" onclick="showPage('batch',this)">
+        <i class="fa-solid fa-layer-group"></i> Batch Management
+    </a>
+
+    <div class="nav-title">Finance</div>
+
+    <a class="nav-item" onclick="showPage('withdrawal',this)">
+        <i class="fa-solid fa-money-bill-transfer"></i> Withdrawal Request
+    </a>
+
+    <a class="nav-item" onclick="showPage('disbursement',this)">
+        <i class="fa-solid fa-money-check-dollar"></i> Disbursement
+    </a>
+
+    <a class="nav-item" onclick="showPage('wallet',this)">
+        <i class="fa-solid fa-wallet"></i> Wallet
+    </a>
+
+    <div class="nav-title">System</div>
+
+    <a class="nav-item" onclick="showPage('notification',this)">
+        <i class="fa-solid fa-bell"></i> Notification
+    </a>
+
+    <a class="nav-item" onclick="showPage('settings',this)">
+        <i class="fa-solid fa-gear"></i> Settings
+    </a>
+
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+<header class="header">
+
+    <div class="header-left">
+        <button class="menu-btn" onclick="toggleSidebar()">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+        <div class="header-title" id="headerTitle">Dashboard</div>
+    </div>
+
+    <div class="header-actions">
+
+        <button class="icon-btn" onclick="showPage('notification')">
+            <i class="fa-regular fa-bell"></i>
+        </button>
+
+        <div class="profile">
+            <div class="avatar">
+                <i class="fa-solid fa-user"></i>
+            </div>
+            <span>Administrator</span>
+        </div>
+
+    </div>
+
+</header>
+
+<div class="content">
+
+<!-- HOME -->
+<section class="page active" id="home">
+
+    <div class="welcome">
+        <div>
+            <h2>Welcome to BechaKena Hub 👋</h2>
+            <p>Manage your complete Order Management System from one place.</p>
+        </div>
+        <div class="welcome-icon">
+            <i class="fa-solid fa-chart-line"></i>
+        </div>
+    </div>
+
+    <div class="stats-grid">
+
+        <div class="stat-card">
+            <div class="stat-info">
+                <small>Total Customer</small>
+                <h3>1,250</h3>
+            </div>
+            <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-info">
+                <small>Total Product</small>
+                <h3>3,840</h3>
+            </div>
+            <div class="stat-icon"><i class="fa-solid fa-box"></i></div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-info">
+                <small>Total Reseller</small>
+                <h3>320</h3>
+            </div>
+            <div class="stat-icon"><i class="fa-solid fa-user-tie"></i></div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-info">
+                <small>Total Batch</small>
+                <h3>48</h3>
+            </div>
+            <div class="stat-icon"><i class="fa-solid fa-layer-group"></i></div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-info">
+                <small>Total Order</small>
+                <h3>8,520</h3>
+            </div>
+            <div class="stat-icon"><i class="fa-solid fa-cart-shopping"></i></div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-info">
+                <small>Pending</small>
+                <h3>420</h3>
+            </div>
+            <div class="stat-icon"><i class="fa-solid fa-clock"></i></div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-info">
+                <small>Processing</small>
+                <h3>1,180</h3>
+            </div>
+            <div class="stat-icon"><i class="fa-solid fa-spinner"></i></div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-info">
+                <small>Delivered</small>
+                <h3>6,720</h3>
+            </div>
+            <div class="stat-icon"><i class="fa-solid fa-circle-check"></i></div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-info">
+                <small>Cancelled</small>
+                <h3>200</h3>
+            </div>
+            <div class="stat-icon"><i class="fa-solid fa-circle-xmark"></i></div>
+        </div>
+
+    </div>
+
+    <div class="grid-2">
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fa-solid fa-money-bill-transfer"></i>
+                    Withdrawal Overview
+                </div>
+                <button class="btn btn-light"
+                onclick="showPage('withdrawal')">View All</button>
+            </div>
+
+            <div class="info-grid">
+
+                <div class="info-box">
+                    <small>Pending</small>
+                    <strong>35</strong>
+                </div>
+
+                <div class="info-box">
+                    <small>Processing</small>
+                    <strong>18</strong>
+                </div>
+
+                <div class="info-box">
+                    <small>Approved</small>
+                    <strong>240</strong>
+                </div>
+
+                <div class="info-box">
+                    <small>Cancelled</small>
+                    <strong>12</strong>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fa-solid fa-bolt"></i>
+                    Quick Actions
+                </div>
+            </div>
+
+            <div class="quick-grid">
+
+                <div class="quick" onclick="showPage('customer')">
+                    <i class="fa-solid fa-user-plus"></i>
+                    <div>
+                        <strong>Add Customer</strong>
+                        <small> Create new customer</small>
+                    </div>
+                </div>
+
+                <div class="quick" onclick="showPage('product')">
+                    <i class="fa-solid fa-box-open"></i>
+                    <div>
+                        <strong>Add Product</strong>
+                        <small> Add new product</small>
+                    </div>
+                </div>
+
+                <div class="quick" onclick="showPage('disbursement')">
+                    <i class="fa-solid fa-money-check-dollar"></i>
+                    <div>
+                        <strong>Disbursement</strong>
+                        <small>Process withdrawals</small>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <div class="grid-2">
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Recent Payment</div>
+                <button class="btn btn-light"
+                onclick="showPage('wallet')">View All</button>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Reseller</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        <tr>
+                            <td>#ORD-1025</td>
+                            <td>Rahim Store</td>
+                            <td>৳500</td>
+                            <td><span class="status paid">Paid</span></td>
+                        </tr>
+
+                        <tr>
+                            <td>#ORD-1024</td>
+                            <td>Karim Shop</td>
+                            <td>৳750</td>
+                            <td><span class="status paid">Paid</span></td>
+                        </tr>
+
+                        <tr>
+                            <td>#ORD-1023</td>
+                            <td>ABC Store</td>
+                            <td>৳300</td>
+                            <td><span class="status paid">Paid</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Recent Withdrawal Request</div>
+                <button class="btn btn-light"
+                onclick="showPage('withdrawal')">View All</button>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Reseller</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        <tr>
+                            <td>#WD-5001</td>
+                            <td>Rahim Store</td>
+                            <td>৳5,000</td>
+                            <td><span class="status pending">Pending</span></td>
+                        </tr>
+
+                        <tr>
+                            <td>#WD-5000</td>
+                            <td>Karim Shop</td>
+                            <td>৳3,000</td>
+                            <td><span class="status processing">Processing</span></td>
+                        </tr>
+
+                        <tr>
+                            <td>#WD-4999</td>
+                            <td>ABC Store</td>
+                            <td>৳2,500</td>
+                            <td><span class="status approved">Approved</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- CUSTOMER -->
+<section class="page" id="customer">
+
+    <div class="card">
+
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fa-solid fa-user-plus"></i>
+                Add Customer
+            </div>
+
+            <button class="btn btn-primary">
+                <i class="fa-solid fa-file-import"></i>
+                Bulk Upload
+            </button>
+        </div>
+
+        <div class="form-grid">
+
+            <div class="form-group">
+                <label>Name</label>
+                <input class="form-control" placeholder="Customer name">
+            </div>
+
+            <div class="form-group">
+                <label>Mobile Number</label>
+                <input class="form-control" placeholder="01XXXXXXXXX">
+            </div>
+
+            <div class="form-group full">
+                <label>Address</label>
+                <textarea class="form-control"
+                placeholder="Customer address"></textarea>
+            </div>
+
+        </div>
+
+        <br>
+
+        <button class="btn btn-primary">
+            <i class="fa-solid fa-plus"></i>
+            Add Customer
+        </button>
+
+    </div>
+
+    <div class="card">
+
+        <div class="card-header">
+            <div class="card-title">Customer List</div>
+
+            <input class="form-control"
+            style="max-width:260px"
+            placeholder="Search customer...">
+        </div>
+
+        <div class="table-wrap">
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>SI</th>
+                        <th>Name</th>
+                        <th>Mobile Number</th>
+                        <th>Address</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <tr>
+                        <td>1</td>
+                        <td>Abdullah</td>
+                        <td>01******21</td>
+                        <td>Dhaka</td>
+                        <td class="actions">
+                            <button class="action-btn edit">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                            <button class="action-btn delete">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td>2</td>
+                        <td>Karim</td>
+                        <td>01******54</td>
+                        <td>Chattogram</td>
+                        <td class="actions">
+                            <button class="action-btn edit">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                            <button class="action-btn delete">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+        </div>
+    </div>
+
+</section>
+
+
+<!-- PRODUCT -->
+<section class="page" id="product">
+
+    <div class="card">
+
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fa-solid fa-box-open"></i>
+                Add Product
+            </div>
+
+            <button class="btn btn-primary">
+                <i class="fa-solid fa-file-import"></i>
+                Bulk Upload
+            </button>
+        </div>
+
+        <div class="form-grid">
+
+            <div class="form-group">
+                <label>Title</label>
+                <input class="form-control" placeholder="Product title">
+            </div>
+
+            <div class="form-group">
+                <label>Wholesale Price</label>
+                <select class="form-control" id="wholesalePrice"
+                onchange="calculateRetail()">
+
+                    <option value="">Select Price</option>
+
+                    <script>
+                    for(let i=50;i<=5000;i+=50){
+                        document.write(`<option value="${i}">৳${i}</option>`);
+                    }
+                    </script>
+
+                </select>
+            </div>
+
+            <div class="form-group full">
+                <label>Description</label>
+                <textarea class="form-control"
+                placeholder="Product description"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Profit Rate</label>
+                <select class="form-control"
+                id="profitRate"
+                onchange="calculateRetail()">
+
+                    <option value="20">20%</option>
+                    <option value="30" selected>30%</option>
+                    <option value="40">40%</option>
+
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Retail Price</label>
+                <input class="form-control"
+                id="retailPrice"
+                readonly
+                placeholder="Auto calculated">
+            </div>
+
+        </div>
+
+        <br>
+
+        <button class="btn btn-primary">
+            <i class="fa-solid fa-plus"></i>
+            Add Product
+        </button>
+
+    </div>
+
+    <div class="card">
+
+        <div class="card-header">
+            <div class="card-title">Product List</div>
+
+            <input class="form-control"
+            style="max-width:260px"
+            placeholder="Search product...">
+        </div>
+
+        <div class="table-wrap">
+
+            <table>
+
+                <thead>
+                    <tr>
+                        <th>SI</th>
+                        <th>Title</th>
+                        <th>Description</th>
+                        <th>Wholesale Price</th>
+                        <th>Retail Price</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    <tr>
+                        <td>1</td>
+                        <td>Type-C Cable</td>
+                        <td>Fast charging cable</td>
+                        <td>৳200</td>
+                        <td>৳260</td>
+                        <td class="actions">
+                            <button class="action-btn edit">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                            <button class="action-btn delete">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td>2</td>
+                        <td>USB Charger</td>
+                        <td>Fast charger</td>
+                        <td>৳300</td>
+                        <td>৳390</td>
+                        <td class="actions">
+                            <button class="action-btn edit">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                            <button class="action-btn delete">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- RESELLER -->
+<section class="page" id="reseller">
+
+    <div class="card">
+
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fa-solid fa-user-tie"></i>
+                Reseller Management
+            </div>
+
+            <input class="form-control"
+            style="max-width:260px"
+            placeholder="Search reseller...">
+        </div>
+
+        <div class="table-wrap">
+
+            <table>
+
+                <thead>
+                    <tr>
+                        <th>SI</th>
+                        <th>Name</th>
+                        <th>Mobile</th>
+                        <th>Email</th>
+                        <th>Orders</th>
+                        <th>Wallet</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    <tr>
+                        <td>1</td>
+                        <td>Rahim Store</td>
+                        <td>01******11</td>
+                        <td>rahim@example.com</td>
+                        <td>125</td>
+                        <td>৳25,500</td>
+                        <td>
+                            <span class="status approved">Active</span>
+                        </td>
+                        <td class="actions">
+                            <button class="action-btn view">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                            <button class="action-btn edit">
+                                <i class="fa-solid fa-user-slash"></i>
+                            </button>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td>2</td>
+                        <td>Karim Shop</td>
+                        <td>01******22</td>
+                        <td>karim@example.com</td>
+                        <td>98</td>
+                        <td>৳18,200</td>
+                        <td>
+                            <span class="status cancelled">Inactive</span>
+                        </td>
+                        <td class="actions">
+                            <button class="action-btn view">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                            <button class="action-btn edit">
+                                <i class="fa-solid fa-user-check"></i>
+                            </button>
+                        </td>
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- BATCH -->
+<section class="page" id="batch">
+
+    <div class="card">
+
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fa-solid fa-layer-group"></i>
+                Batch Management
+            </div>
+
+            <span class="status processing">Active Batch #B-048</span>
+        </div>
+
+        <div class="batch-steps">
+
+            <div class="batch-step">
+                <i class="fa-solid fa-calculator"></i>
+                <strong>Calculation</strong>
+            </div>
+
+            <div class="batch-step">
+                <i class="fa-solid fa-divide"></i>
+                <strong>Division</strong>
+            </div>
+
+            <div class="batch-step">
+                <i class="fa-solid fa-boxes-stacked"></i>
+                <strong>Assignment</strong>
+            </div>
+
+            <div class="batch-step">
+                <i class="fa-solid fa-right-left"></i>
+                <strong>Transfer</strong>
+            </div>
+
+            <div class="batch-step">
+                <i class="fa-solid fa-check-double"></i>
+                <strong>Settlement</strong>
+            </div>
+
+        </div>
+
+        <div class="info-grid">
+
+            <div class="info-box">
+                <small>Previous Target</small>
+                <strong>৳500</strong>
+            </div>
+
+            <div class="info-box">
+                <small>Growth Rate</small>
+                <strong>50%</strong>
+            </div>
+
+            <div class="info-box">
+                <small>Next Target</small>
+                <strong>৳750</strong>
+            </div>
+
+            <div class="info-box">
+                <small>Cycle</small>
+                <strong>36 Hours</strong>
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="card">
+
+        <div class="card-header">
+            <div class="card-title">Batch Calculation</div>
+
+            <select class="form-control"
+            style="max-width:150px">
+                <option>30%</option>
+                <option>40%</option>
+                <option selected>50%</option>
+            </select>
+        </div>
+
+        <div class="info-grid">
+
+            <div class="info-box">
+                <small>Previous Batch Target</small>
+                <strong>৳500</strong>
+            </div>
+
+            <div class="info-box">
+                <small>Growth</small>
+                <strong>50%</strong>
+            </div>
+
+            <div class="info-box">
+                <small>New Batch Target</small>
+                <strong>৳750</strong>
+            </div>
+
+            <div class="info-box">
+                <small>Transfer Period</small>
+                <strong>6 Hours</strong>
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="card">
+
+        <div class="card-header">
+            <div class="card-title">Division & Assignment</div>
+        </div>
+
+        <p style="margin-bottom:15px;color:#64748b">
+            Target amount is divided into sequential 50-multiple parts.
+        </p>
+
+        <div class="tabs">
+            <button class="tab active">50</button>
+            <button class="tab">100</button>
+            <button class="tab">150</button>
+            <button class="tab">200</button>
+            <button class="tab">250</button>
+        </div>
+
+        <div class="table-wrap">
+
+            <table>
+
+                <thead>
+                    <tr>
+                        <th>Division</th>
+                        <th>Wholesale Price</th>
+                        <th>Customer</th>
+                        <th>Product</th>
+                        <th>Reseller</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    <tr>
+                        <td>৳50</td>
+                        <td>৳50</td>
+                        <td>Customer #001</td>
+                        <td>Product A</td>
+                        <td>Rahim Store</td>
+                        <td>
+                            <span class="status processing">
+                                Processing
+                            </span>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td>৳100</td>
+                        <td>৳100</td>
+                        <td>Customer #002</td>
+                        <td>Product B</td>
+                        <td>Karim Shop</td>
+                        <td>
+                            <span class="status pending">
+                                Pending
+                            </span>
+                        </td>
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+    <div class="card">
+
+        <div class="card-header">
+            <div class="card-title">Batch Orders</div>
+
+            <span class="status processing">
+                Transfer Period: 6 Hours
+            </span>
+        </div>
+
+        <div class="table-wrap">
+
+            <table>
+
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Payment</th>
+                        <th>Order Status</th>
+                        <th>Transfer Number</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    <tr>
+                        <td>#ORD-1001</td>
+                        <td>
+                            <span class="status paid">Paid</span>
+                        </td>
+                        <td>
+                            <span class="status processing">
+                                Processing
+                            </span>
+                        </td>
+                        <td>TR-001</td>
+                        <td>
+                            <button class="btn btn-light">
+                                <i class="fa-solid fa-eye"></i>
+                                View
+                            </button>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td>#ORD-1002</td>
+                        <td>
+                            <span class="status unpaid">Unpaid</span>
+                        </td>
+                        <td>
+                            <span class="status pending">
+                                Pending
+                            </span>
+                        </td>
+                        <td>TR-002</td>
+                        <td>
+                            <button class="btn btn-light">
+                                <i class="fa-solid fa-eye"></i>
+                                View
+                            </button>
+                        </td>
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- WITHDRAWAL -->
+<section class="page" id="withdrawal">
+
+    <div class="card">
+
+        <div class="card-header">
+
+            <div class="card-title">
+                <i class="fa-solid fa-money-bill-transfer"></i>
+                Withdrawal Requests
+            </div>
+
+            <button class="btn btn-warning"
+            onclick="processPending()">
+                <i class="fa-solid fa-forward"></i>
+                Move Pending → Processing
+            </button>
+
+        </div>
+
+        <div class="tabs">
+
+            <button class="tab active">All</button>
+            <button class="tab">Pending</button>
+            <button class="tab">Processing</button>
+            <button class="tab">Approved</button>
+            <button class="tab">Cancelled</button>
+
+        </div>
+
+        <div class="table-wrap">
+
+            <table>
+
+                <thead>
+                    <tr>
+                        <th>
+                            <input type="checkbox">
+                        </th>
+                        <th>ID</th>
+                        <th>Reseller</th>
+                        <th>Amount</th>
+                        <th>Method</th>
+                        <th>Account</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    <tr>
+                        <td><input type="checkbox"></td>
+                        <td>#WD-5001</td>
+                        <td>Rahim Store</td>
+                        <td>৳5,000</td>
+                        <td>bKash</td>
+                        <td>01******11</td>
+                        <td>
+                            <span class="status pending">
+                                Pending
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn btn-light">
+                                View
+                            </button>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td><input type="checkbox"></td>
+                        <td>#WD-5000</td>
+                        <td>Karim Shop</td>
+                        <td>৳3,000</td>
+                        <td>Nagad</td>
+                        <td>01******22</td>
+                        <td>
+                            <span class="status processing">
+                                Processing
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn btn-light">
+                                View
+                            </button>
+                        </td>
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- DISBURSEMENT -->
+<section class="page" id="disbursement">
+
+    <div class="card">
+
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fa-solid fa-money-check-dollar"></i>
+                Disbursement
+            </div>
+        </div>
+
+        <div class="quick-grid">
+
+            <div class="quick">
+                <i class="fa-solid fa-download"></i>
+                <div>
+                    <strong>Download CSV</strong>
+                    <small>Export processing requests</small>
+                </div>
+            </div>
+
+            <div class="quick">
+                <i class="fa-solid fa-building-columns"></i>
+                <div>
+                    <strong>External Disbursement</strong>
+                    <small>Process bulk payment</small>
+                </div>
+            </div>
+
+            <div class="quick">
+                <i class="fa-solid fa-upload"></i>
+                <div>
+                    <strong>Upload Result</strong>
+                    <small>Upload payment result</small>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="card">
+
+        <div class="card-header">
+            <div class="card-title">Disbursement Result</div>
+        </div>
+
+        <div class="info-grid">
+
+            <div class="info-box">
+                <small>Processing</small>
+                <strong>18</strong>
+            </div>
+
+            <div class="info-box">
+                <small>Approved</small>
+                <strong>240</strong>
+            </div>
+
+            <div class="info-box">
+                <small>Cancelled</small>
+                <strong>12</strong>
+            </div>
+
+            <div class="info-box">
+                <small>Duplicate Protected</small>
+                <strong>Yes</strong>
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- WALLET -->
+<section class="page" id="wallet">
+
+    <div class="stats-grid">
+
+        <div class="stat-card">
+            <div class="stat-info">
+                <small>Payment</small>
+                <h3>৳125,000</h3>
+            </div>
+            <div class="stat-icon">
+                <i class="fa-solid fa-arrow-down"></i>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-info">
+                <small>Withdraw</small>
+                <h3>৳45,000</h3>
+            </div>
+            <div class="stat-icon">
+                <i class="fa-solid fa-arrow-up"></i>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-info">
+                <small>Current Balance</small>
+                <h3>৳80,000</h3>
+            </div>
+            <div class="stat-icon">
+                <i class="fa-solid fa-wallet"></i>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="card">
+
+        <div class="card-header">
+            <div class="card-title">Transaction History</div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active">All</button>
+            <button class="tab">Payment</button>
+            <button class="tab">Withdraw</button>
+        </div>
+
+        <div class="table-wrap">
+
+            <table>
+
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Type</th>
+                        <th>Reference</th>
+                        <th>Amount</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    <tr>
+                        <td>#TX-1001</td>
+                        <td>Payment</td>
+                        <td>#ORD-1001</td>
+                        <td>+৳500</td>
+                        <td>05 Oct 2026</td>
+                    </tr>
+
+                    <tr>
+                        <td>#TX-1000</td>
+                        <td>Withdraw</td>
+                        <td>#WD-5000</td>
+                        <td>-৳3,000</td>
+                        <td>05 Oct 2026</td>
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- NOTIFICATION -->
+<section class="page" id="notification">
+
+    <div class="card">
+
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fa-solid fa-bell"></i>
+                Notifications
+            </div>
+
+            <button class="btn btn-light">
+                Mark All Read
+            </button>
+        </div>
+
+        <div class="quick-grid">
+
+            <div class="quick">
+                <i class="fa-solid fa-layer-group"></i>
+                <div>
+                    <strong>Batch Completed</strong>
+                    <small>Batch #B-047 has been settled.</small>
+                </div>
+            </div>
+
+            <div class="quick">
+                <i class="fa-solid fa-money-bill-transfer"></i>
+                <div>
+                    <strong>Withdrawal Request</strong>
+                    <small>New withdrawal request received.</small>
+                </div>
+            </div>
+
+            <div class="quick">
+                <i class="fa-solid fa-user-plus"></i>
+                <div>
+                    <strong>New Reseller</strong>
+                    <small>A new reseller registered.</small>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- SETTINGS -->
+<section class="page" id="settings">
+
+    <div class="card">
+
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fa-solid fa-gear"></i>
+                System Settings
+            </div>
+
+            <span class="status approved">System ON</span>
+        </div>
+
+        <div class="form-grid">
+
+            <div class="form-group">
+                <label>System Status</label>
+                <select class="form-control">
+                    <option selected>ON</option>
+                    <option>OFF</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Profit Rate</label>
+                <select class="form-control">
+                    <option>20%</option>
+                    <option selected>30%</option>
+                    <option>40%</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>First Batch Amount</label>
+                <input class="form-control"
+                value="500">
+            </div>
+
+            <div class="form-group">
+                <label>Batch Growth Rate</label>
+                <select class="form-control">
+                    <option>30%</option>
+                    <option>40%</option>
+                    <option selected>50%</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Batch Cycle Period</label>
+                <input class="form-control"
+                value="36 Hours">
+            </div>
+
+            <div class="form-group">
+                <label>Transfer Period</label>
+                <input class="form-control"
+                value="6 Hours">
+            </div>
+
+        </div>
+
+        <br>
+
+        <button class="btn btn-primary">
+            <i class="fa-solid fa-floppy-disk"></i>
+            Save Settings
+        </button>
+
+        <button class="btn btn-light">
+            <i class="fa-solid fa-rotate-left"></i>
+            Reset
+        </button>
+
+    </div>
+
+    <div class="card">
+
+        <div class="card-header">
+            <div class="card-title">
+                Current Batch Rules
+            </div>
+        </div>
+
+        <div class="info-grid">
+
+            <div class="info-box">
+                <small>Growth Options</small>
+                <strong>30 / 40 / 50%</strong>
+            </div>
+
+            <div class="info-box">
+                <small>Division Unit</small>
+                <strong>৳50</strong>
+            </div>
+
+            <div class="info-box">
+                <small>Cycle</small>
+                <strong>36 Hours</strong>
+            </div>
+
+            <div class="info-box">
+                <small>Transfer</small>
+                <strong>6 Hours</strong>
+            </div>
+
+        </div>
+
+        <br>
+
+        <p style="color:#64748b;line-height:1.7">
+            Partial settlement is disabled. When the active batch target
+            is fully paid, the previous batch is fully settled, its
+            Processing orders become Delivered, reseller capital plus
+            profit is credited, and the next batch is created according
+            to the configured growth formula.
+        </p>
+
+    </div>
+
+</section>
+
+</div>
+</main>
+
+
+<!-- MOBILE NAV -->
+<nav class="mobile-nav">
+
+    <button class="active" onclick="showPage('home',this)">
+        <i class="fa-solid fa-house"></i>
+        Home
+    </button>
+
+    <button onclick="showPage('customer',this)">
+        <i class="fa-solid fa-users"></i>
+        Customer
+    </button>
+
+    <button onclick="showPage('product',this)">
+        <i class="fa-solid fa-box"></i>
+        Product
+    </button>
+
+    <button onclick="showPage('batch',this)">
+        <i class="fa-solid fa-layer-group"></i>
+        Batch
+    </button>
+
+    <button onclick="showPage('settings',this)">
+        <i class="fa-solid fa-gear"></i>
+        Settings
+    </button>
+
+</nav>
+
+
+<script>
+
+const titles = {
+    home:"Dashboard",
+    customer:"Customer Management",
+    product:"Product Management",
+    reseller:"Reseller Management",
+    batch:"Batch Management",
+    withdrawal:"Withdrawal Request",
+    disbursement:"Disbursement",
+    wallet:"Wallet",
+    notification:"Notification",
+    settings:"Settings"
+};
+
+function showPage(page, element){
+
+    document.querySelectorAll(".page")
+    .forEach(p => p.classList.remove("active"));
+
+    const target = document.getElementById(page);
+
+    if(target){
+        target.classList.add("active");
+    }
+
+    document.querySelectorAll(".nav-item")
+    .forEach(n => n.classList.remove("active"));
+
+    if(element && element.classList.contains("nav-item")){
+        element.classList.add("active");
+    }
+
+    document.querySelectorAll(".mobile-nav button")
+    .forEach(n => n.classList.remove("active"));
+
+    if(element && element.parentElement &&
+       element.parentElement.classList.contains("mobile-nav")){
+        element.classList.add("active");
+    }
+
+    document.getElementById("headerTitle").textContent =
+        titles[page] || "Dashboard";
+
+    document.getElementById("sidebar").classList.remove("open");
+
+    window.scrollTo({
+        top:0,
+        behavior:"smooth"
+    });
+}
+
+function toggleSidebar(){
+
+    document.getElementById("sidebar")
+    .classList.toggle("open");
+
+}
+
+function calculateRetail(){
+
+    const wholesale =
+        Number(document.getElementById("wholesalePrice").value);
+
+    const rate =
+        Number(document.getElementById("profitRate").value);
+
+    if(wholesale){
+
+        const profit = wholesale * rate / 100;
+
+        document.getElementById("retailPrice").value =
+            "৳" + (wholesale + profit).toFixed(0);
+
+    }else{
+
+        document.getElementById("retailPrice").value = "";
+
+    }
+
+}
+
+function processPending(){
+
+    alert("Selected Pending withdrawal requests moved to Processing.");
+
+}
+
+document.addEventListener("click",function(e){
+
+    if(e.target.classList.contains("tab")){
+
+        const parent = e.target.parentElement;
+
+        parent.querySelectorAll(".tab")
+        .forEach(tab => tab.classList.remove("active"));
+
+        e.target.classList.add("active");
+
+    }
+
+});
+
+</script>
+
+</body>
+</html>

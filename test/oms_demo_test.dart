@@ -52,29 +52,43 @@ void main() {
     ]);
   });
 
+  test('customer Excel template includes import headers and text mobile', () {
+    expect(parseExcelRows(createCustomerExcelTemplate()), [
+      ['name', 'mobile_number', 'address'],
+      ['Sample Customer', '01700000000', 'Dhaka'],
+    ]);
+  });
+
+  test('product Excel template includes required headers and valid sample', () {
+    expect(parseExcelRows(createProductExcelTemplate()), [
+      ['category', 'title', 'description', 'wholesale_price'],
+      [
+        'Electronics',
+        'Sample Product',
+        'Replace this example with your product details.',
+        '500',
+      ],
+    ]);
+  });
+
   test('rejects empty or invalid Excel files', () {
     expect(() => parseExcelRows([]), throwsA(isA<FormatException>()));
     expect(() => parseExcelRows([1, 2, 3]), throwsA(isA<UnsupportedError>()));
   });
 
   group('DemoOmsStore', () {
-    test('divides a target into available wholesale prices', () {
-      expect(
-        DemoOmsStore.divideTarget(500, [200, 300, 250]),
-        containsAll([200, 300]),
-      );
-      expect(DemoOmsStore.divideTarget(750, [200, 300]), isEmpty);
-      expect(
-        DemoOmsStore.divideTarget(700, [200, 300, 250]).reduce((a, b) => a + b),
-        700,
-      );
+    test('divides a target into consecutive ৳50 increments', () {
+      expect(DemoOmsStore.divideTarget(500), [50, 100, 150, 200]);
+      expect(DemoOmsStore.divideTarget(750), [50, 100, 150, 200, 250]);
+      expect(DemoOmsStore.divideTarget(700), isEmpty);
+      expect(DemoOmsStore.divideTarget(0), isEmpty);
     });
 
-    test('calculates successive batch targets in nearest ৳50 units', () {
+    test('calculates successive targets valid for progressive divisions', () {
       final store = DemoOmsStore();
 
       expect(DemoOmsStore.calculateNextBatchTarget(500, 50), 750);
-      expect(DemoOmsStore.calculateNextBatchTarget(750, 50), 1150);
+      expect(DemoOmsStore.calculateNextBatchTarget(750, 50), 1050);
 
       for (final order in store.orders.toList()) {
         store.confirmPayment(order);
@@ -90,9 +104,15 @@ void main() {
         store.confirmPayment(order);
       }
       store.settleCurrentBatch();
-      expect(store.currentBatchTarget, 1150);
-      expect(store.currentDivision.reduce((a, b) => a + b), 1150);
-      expect(store.currentDivision.every((amount) => amount % 50 == 0), isTrue);
+      expect(store.currentBatchTarget, 1050);
+      expect(store.currentDivision, [50, 100, 150, 200, 250, 300]);
+      expect(
+        store.orders
+            .where((order) => order.batchId == store.currentBatchId)
+            .map((order) => order.wholesalePrice)
+            .toList(),
+        store.currentDivision,
+      );
     });
 
     test('system reset restores initial records, batch, and settings', () {
@@ -125,7 +145,7 @@ void main() {
       expect(store.customers, hasLength(3));
       expect(store.products, hasLength(3));
       expect(store.resellers, hasLength(3));
-      expect(store.orders, hasLength(2));
+      expect(store.orders, hasLength(4));
       expect(store.batches, hasLength(1));
       expect(store.walletEntries, isEmpty);
       expect(
@@ -166,10 +186,10 @@ void main() {
       );
       expect(store.resellerCapital, 500);
       expect(store.resellerProfit, 150);
-      expect(store.walletEntries, hasLength(2));
+      expect(store.walletEntries, hasLength(4));
       expect(
         store.walletEntries.map((entry) => entry.orderId).toSet(),
-        hasLength(2),
+        hasLength(4),
       );
       expect(store.currentBatchId, 'B-002');
       expect(store.currentBatchTarget, 750);
@@ -190,9 +210,8 @@ void main() {
       expect(order.paymentStatus, DemoPaymentStatus.unpaid);
     });
 
-    test('keeps settlement atomic when the next target cannot be divided', () {
-      final store = DemoOmsStore()
-        ..products.removeWhere((product) => product.wholesalePrice == 250);
+    test('keeps settlement atomic when the next batch cannot be created', () {
+      final store = DemoOmsStore()..products.clear();
       for (final order in store.orders) {
         store.confirmPayment(order);
       }
@@ -208,10 +227,18 @@ void main() {
         isTrue,
       );
 
+      store.products.add(
+        DemoProduct(
+          title: 'Replacement product',
+          category: 'General',
+          description: '',
+          wholesalePrice: 200,
+        ),
+      );
       store.settings.growthRate = 40;
       store.settleCurrentBatch();
       expect(store.currentBatchId, 'B-002');
-      expect(store.currentBatchTarget, 700);
+      expect(store.currentBatchTarget, 750);
     });
 
     test(

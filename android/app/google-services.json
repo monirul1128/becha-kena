@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "16646316830",
+    "project_id": "bkh-66405",
+    "storage_bucket": "bkh-66405.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:16646316830:android:4071030409f052242b1f0f",
+        "android_client_info": {
+          "package_name": "com.example.bechakena_hub"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBHZC8YLp_z-e9Bk0H_imgDF7laMt1k95U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

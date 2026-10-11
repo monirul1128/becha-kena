@@ -1,10 +1,18 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:file_picker/file_picker.dart';
 
+import 'admin_auth.dart';
+import 'firebase_options.dart';
 import 'oms_demo.dart';
 
-void main() => runApp(const BechaKenaHubApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  runApp(const BechaKenaHubApp());
+}
 
 const brand = Color(0xFF625FEA);
 const brandDark = Color(0xFF5146E5);
@@ -26,8 +34,51 @@ int _tableColumn(List<String> headers, List<String> candidates) =>
 String _tableValue(List<String> row, int index) =>
     index >= 0 && index < row.length ? row[index].trim() : '';
 
+Future<void> _saveExcelTemplate(
+  BuildContext context, {
+  required String fileName,
+  required List<int> bytes,
+}) async {
+  try {
+    final savedFile = await FilePicker.saveFile(
+      fileName: fileName,
+      bytes: Uint8List.fromList(bytes),
+      mimeType:
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      dialogTitle: 'Save Excel template',
+    );
+    if (!context.mounted || savedFile == null) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text('Template saved: $fileName')));
+  } on PlatformException catch (error) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Could not save the Excel template: ${error.message ?? error.code}',
+        ),
+      ),
+    );
+  } on UnsupportedError catch (error) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Could not save the Excel template: ${error.message ?? error.toString()}',
+        ),
+      ),
+    );
+  } on StateError catch (error) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(error.message)));
+  }
+}
+
 class BechaKenaHubApp extends StatelessWidget {
-  const BechaKenaHubApp({super.key});
+  const BechaKenaHubApp({this.adminAuth, super.key});
+
+  final AdminAuthService? adminAuth;
 
   @override
   Widget build(BuildContext context) {
@@ -68,7 +119,7 @@ class BechaKenaHubApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const HubShell(),
+      home: HubShell(adminAuth: adminAuth),
     );
   }
 }
@@ -110,21 +161,40 @@ const adminMenu = <_NavItem>[
 ];
 
 class HubShell extends StatefulWidget {
-  const HubShell({super.key});
+  const HubShell({this.adminAuth, super.key});
+
+  final AdminAuthService? adminAuth;
 
   @override
   State<HubShell> createState() => _HubShellState();
 }
 
 class _HubShellState extends State<HubShell> {
+  late final AdminAuthService _adminAuth =
+      widget.adminAuth ?? FirebaseAdminAuthService(FirebaseAuth.instance);
   String? _role;
   String _page = 'roles';
+  String _previousPage = 'orders';
   String? _selectedOrderId;
 
-  void _enter(String role) {
+  Future<void> _enter(String role) async {
+    if (role == 'admin') {
+      var hasAdminAccess = false;
+      try {
+        hasAdminAccess = await _adminAuth.hasAdminAccess;
+      } on FirebaseAuthException catch (error) {
+        _message(error.message ?? error.code);
+      }
+      if (!mounted) return;
+      setState(() {
+        _role = 'admin';
+        _page = hasAdminAccess ? 'adminHome' : 'adminLogin';
+      });
+      return;
+    }
     setState(() {
-      _role = role;
-      _page = role == 'reseller' ? 'home' : 'adminHome';
+      _role = 'reseller';
+      _page = 'home';
     });
   }
 
@@ -132,6 +202,7 @@ class _HubShellState extends State<HubShell> {
     Navigator.of(context).maybePop();
     setState(() {
       if (page.startsWith('orderDetails:')) {
+        _previousPage = _page;
         _selectedOrderId = page.substring('orderDetails:'.length);
         _page = 'orderDetails';
       } else {
@@ -140,11 +211,38 @@ class _HubShellState extends State<HubShell> {
     });
   }
 
-  void _switchRole() {
+  Future<void> _switchRole() async {
     Navigator.of(context).maybePop();
+    try {
+      if (_role == 'admin') await _adminAuth.signOut();
+    } on FirebaseAuthException catch (error) {
+      _message(error.message ?? error.code);
+      return;
+    }
+    if (!mounted) return;
     setState(() {
-      _role = _role == 'reseller' ? 'admin' : 'reseller';
-      _page = _role == 'reseller' ? 'home' : 'adminHome';
+      _role = null;
+      _page = 'roles';
+    });
+  }
+
+  Future<void> _signInAdmin(String email, String password) async {
+    await _adminAuth.signIn(email, password);
+    if (!mounted) return;
+    setState(() => _page = 'adminHome');
+  }
+
+  Future<void> _signOutAdmin() async {
+    try {
+      await _adminAuth.signOut();
+    } on FirebaseAuthException catch (error) {
+      _message(error.message ?? error.code);
+      return;
+    }
+    if (!mounted) return;
+    setState(() {
+      _role = null;
+      _page = 'roles';
     });
   }
 
@@ -163,16 +261,30 @@ class _HubShellState extends State<HubShell> {
     final isReseller = _role == 'reseller';
     final nav = isReseller ? resellerNav : adminNav;
     final title = _titleFor(_page);
-    final isStandalone = const {'login', 'register'}.contains(_page);
+    final isStandalone = const {
+      'login',
+      'register',
+      'adminLogin',
+    }.contains(_page);
     return Scaffold(
       appBar: AppBar(
         title: Text(
           title,
           style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
         ),
-        leading: isStandalone
+        leading: isStandalone || _page == 'orderDetails'
             ? IconButton(
-                onPressed: () => _go(isReseller ? 'home' : 'adminHome'),
+                tooltip: 'Back',
+                onPressed: _page == 'adminLogin'
+                    ? () => setState(() {
+                        _role = null;
+                        _page = 'roles';
+                      })
+                    : () => _go(
+                        _page == 'orderDetails'
+                            ? _previousPage
+                            : (isReseller ? 'home' : 'adminHome'),
+                      ),
                 icon: const Icon(Icons.arrow_back_rounded),
               )
             : Builder(
@@ -183,7 +295,7 @@ class _HubShellState extends State<HubShell> {
                 ),
               ),
         actions: [
-          if (!isStandalone) ...[
+          if (!isStandalone && _page != 'orderDetails') ...[
             IconButton(
               tooltip: 'Notifications',
               onPressed: () =>
@@ -226,7 +338,7 @@ class _HubShellState extends State<HubShell> {
           ],
         ],
       ),
-      drawer: isStandalone
+      drawer: isStandalone || _page == 'orderDetails'
           ? null
           : HubDrawer(
               role: _role!,
@@ -235,7 +347,7 @@ class _HubShellState extends State<HubShell> {
               onSwitch: _switchRole,
             ),
       body: _buildPage(),
-      bottomNavigationBar: isStandalone
+      bottomNavigationBar: isStandalone || _page == 'orderDetails'
           ? null
           : NavigationBar(
               selectedIndex: _navIndex(nav, _page),
@@ -270,6 +382,7 @@ class _HubShellState extends State<HubShell> {
       'profile': 'Reseller Profile',
       'login': 'Welcome Back',
       'register': 'Become a Reseller',
+      'adminLogin': 'Administrator Sign In',
       'adminHome': 'Dashboard',
       'customers': 'Customer Management',
       'products': 'Product Management',
@@ -304,6 +417,8 @@ class _HubShellState extends State<HubShell> {
         return ProfilePage(onOpen: _go);
       case 'login':
         return AuthPage(register: false, onMessage: _message, onOpen: _go);
+      case 'adminLogin':
+        return AdminLoginPage(onSignIn: _signInAdmin, onMessage: _message);
       case 'register':
         return AuthPage(register: true, onMessage: _message, onOpen: _go);
       case 'adminHome':
@@ -325,7 +440,7 @@ class _HubShellState extends State<HubShell> {
       case 'adminNotifications':
         return NotificationsPage(onMessage: _message, admin: true);
       case 'settings':
-        return const AdminSettings();
+        return AdminSettings(auth: _adminAuth, onSignOut: _signOutAdmin);
       default:
         return RolePicker(onSelect: _enter);
     }
@@ -398,7 +513,7 @@ class RolePicker extends StatelessWidget {
             ),
             const SizedBox(height: 28),
             const Text(
-              'Mobile demo • Sample information',
+              'Sample information',
               textAlign: TextAlign.center,
               style: TextStyle(color: muted, fontSize: 12),
             ),
@@ -748,23 +863,44 @@ class MetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Panel(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(13),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (icon != null)
-            Align(
-              alignment: Alignment.centerRight,
-              child: Icon(icon, color: color.withValues(alpha: .7), size: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    label,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: muted, fontSize: 13),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Icon(icon, color: color.withValues(alpha: .7), size: 19),
+              ],
             ),
-          Text(label, style: const TextStyle(color: muted, fontSize: 13)),
+          if (icon == null)
+            Text(
+              label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: muted, fontSize: 13),
+            ),
           const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              color: color,
-              fontSize: 23,
-              fontWeight: FontWeight.w900,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              maxLines: 1,
+              style: TextStyle(
+                color: color,
+                fontSize: 23,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
         ],
@@ -774,8 +910,13 @@ class MetricCard extends StatelessWidget {
 }
 
 class MetricGrid extends StatelessWidget {
-  const MetricGrid({required this.items, super.key});
+  const MetricGrid({
+    required this.items,
+    this.childAspectRatio = 1.3,
+    super.key,
+  });
   final List<MetricCard> items;
+  final double childAspectRatio;
 
   @override
   Widget build(BuildContext context) {
@@ -785,7 +926,7 @@ class MetricGrid extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       crossAxisSpacing: 12,
       mainAxisSpacing: 12,
-      childAspectRatio: 1.53,
+      childAspectRatio: childAspectRatio,
       children: items,
     );
   }
@@ -935,23 +1076,9 @@ class ResellerHome extends StatelessWidget {
     final simulated = demoOms.orders.where(
       (order) => order.paymentStatus == DemoPaymentStatus.simulated,
     );
-    final paymentTotal = simulated.fold<int>(
-      0,
-      (total, order) => total + order.wholesalePrice,
-    );
-    final profitTotal = simulated.fold<int>(
-      0,
-      (total, order) => total + order.profit,
-    );
     int withdrawalCount(DemoWithdrawalStatus status) =>
         demoOms.withdrawals.where((request) => request.status == status).length;
     final recentOrders = demoOms.orders.reversed.take(2).toList();
-    final recentPayments = demoOms.orders
-        .where((order) => order.paymentStatus == DemoPaymentStatus.simulated)
-        .toList()
-        .reversed
-        .take(2)
-        .toList();
     final recentWithdrawals = demoOms.withdrawals
         .where((request) => request.reseller == demoOms.resellers.first)
         .toList()
@@ -1040,7 +1167,7 @@ class ResellerHome extends StatelessWidget {
               color: brand,
             ),
             MetricCard(
-              label: 'Paid (demo)',
+              label: 'Paid',
               value: '${simulated.length}',
               color: green,
             ),
@@ -1050,24 +1177,6 @@ class ResellerHome extends StatelessWidget {
               color: orange,
             ),
           ],
-        ),
-        Panel(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          child: Column(
-            children: [
-              KeyValueRow(
-                'Demo-confirmed wholesale',
-                '৳$paymentTotal (not verified)',
-                valueColor: brand,
-              ),
-              const Divider(height: 1, color: line),
-              KeyValueRow(
-                'Projected demo profit',
-                '৳$profitTotal',
-                valueColor: green,
-              ),
-            ],
-          ),
         ),
         const SizedBox(height: 18),
         const SectionTitle('Withdrawal Overview', icon: Icons.payments_rounded),
@@ -1112,20 +1221,6 @@ class ResellerHome extends StatelessWidget {
                 detail: order.product.title,
                 status: _orderStatusLabel(order.status),
                 onTap: () => onOpen('orderDetails:${order.id}'),
-              ),
-            ),
-        const SizedBox(height: 8),
-        const SectionTitle('Recent Payment', icon: Icons.receipt_long_rounded),
-        if (recentPayments.isEmpty)
-          const Panel(child: Text('No demo payment confirmations yet.'))
-        else
-          for (final order in recentPayments)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _RecentActivityCard(
-                title: 'Demo payment',
-                detail: '#${order.id} • ৳${order.wholesalePrice}',
-                status: 'Demo only',
               ),
             ),
         const SizedBox(height: 8),
@@ -1282,6 +1377,46 @@ class _QuickLink extends StatelessWidget {
   }
 }
 
+class _OrderInfoRow extends StatelessWidget {
+  const _OrderInfoRow(this.label, this.value, {this.valueColor});
+  final String label;
+  final String value;
+  final Color? valueColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 122,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: muted,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                color: valueColor ?? ink,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class ResellerOrders extends StatefulWidget {
   const ResellerOrders({
     required this.onOpen,
@@ -1347,7 +1482,7 @@ class _ResellerOrdersState extends State<ResellerOrders> {
                       const SizedBox(width: 9),
                       Expanded(
                         child: Text(
-                          '#${order.id} • ${order.batchId}',
+                          '#${order.id}',
                           style: const TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w900,
@@ -1358,76 +1493,91 @@ class _ResellerOrdersState extends State<ResellerOrders> {
                     ],
                   ),
                   const SizedBox(height: 14),
-                  KeyValueRow('Customer', order.customer.name),
-                  const Divider(height: 1, color: line),
-                  KeyValueRow('Product', order.product.title),
-                  const Divider(height: 1, color: line),
-                  KeyValueRow('Assigned reseller', order.reseller.name),
-                  const Divider(height: 1, color: line),
-                  KeyValueRow(
-                    'Payment status',
+                  _OrderInfoRow('Order ID', '#${order.id}'),
+                  _OrderInfoRow(
+                    'Order Status',
+                    _orderStatusLabel(order.status),
+                  ),
+                  _OrderInfoRow(
+                    'Payment Status',
                     order.paymentStatus == DemoPaymentStatus.simulated
-                        ? 'DEMO • Not provider-verified'
+                        ? 'Paid'
                         : 'Unpaid',
                     valueColor:
                         order.paymentStatus == DemoPaymentStatus.simulated
-                        ? orange
-                        : red,
+                        ? green
+                        : orange,
                   ),
-                  const Divider(height: 1, color: line),
-                  KeyValueRow('Transfer number', '${order.transferNumber}'),
-                  const SizedBox(height: 13),
-                  PriceStrip(
-                    wholesale: '৳${order.wholesalePrice}',
-                    retail: '৳${order.retailPrice}',
-                    profit: '৳${order.profit}',
+                  _OrderInfoRow(
+                    'Wholesale Price',
+                    '৳${order.wholesalePrice}',
+                    valueColor: blue,
                   ),
-                  const SizedBox(height: 14),
-                  if (order.status == DemoOrderStatus.pending)
-                    Row(
-                      children: [
-                        Expanded(
+                  _OrderInfoRow(
+                    'Retail Price',
+                    '৳${order.retailPrice}',
+                    valueColor: ink,
+                  ),
+                  _OrderInfoRow(
+                    'Profit',
+                    '৳${order.profit}',
+                    valueColor: green,
+                  ),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      SizedBox(
+                        width: 120,
+                        child: OutlinedButton(
+                          onPressed: () =>
+                              widget.onOpen('orderDetails:${order.id}'),
+                          child: const Text('View Details'),
+                        ),
+                      ),
+                      if (order.status == DemoOrderStatus.pending)
+                        SizedBox(
+                          width: 134,
                           child: FilledButton(
                             onPressed: () {
                               try {
                                 demoOms.confirmPayment(order);
                                 setState(() {});
                                 widget.onMessage(
-                                  'Demo confirmation recorded only; no payment provider was contacted.',
+                                  'Payment confirmed successfully.',
                                 );
                               } on StateError catch (error) {
                                 widget.onMessage(error.message);
                               }
                             },
-                            child: const Text('Demo Payment & Confirm'),
+                            child: const Text('Pay & Confirm'),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        OutlinedButton(
-                          onPressed: () {
-                            try {
-                              demoOms.transferOrder(order);
-                              setState(() {});
-                              widget.onMessage(
-                                'Order transferred to ${order.reseller.name}.',
-                              );
-                            } on StateError catch (error) {
-                              widget.onMessage(error.message);
-                            }
-                          },
-                          child: const Text('Cancel / Transfer'),
+                      if (order.status == DemoOrderStatus.pending)
+                        SizedBox(
+                          width: 108,
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: red,
+                              side: const BorderSide(color: red),
+                            ),
+                            onPressed: () {
+                              try {
+                                demoOms.transferOrder(order);
+                                setState(() {});
+                                widget.onMessage(
+                                  'Order cancelled and transferred successfully.',
+                                );
+                              } on StateError catch (error) {
+                                widget.onMessage(error.message);
+                              }
+                            },
+                            child: const Text('Cancel'),
+                          ),
                         ),
-                      ],
-                    )
-                  else
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        onPressed: () =>
-                            widget.onOpen('orderDetails:${order.id}'),
-                        child: const Text('View Details'),
-                      ),
-                    ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -1452,6 +1602,7 @@ class ResellerWallet extends StatelessWidget {
     return PageBody(
       children: [
         MetricGrid(
+          childAspectRatio: 1.25,
           items: [
             MetricCard(
               label: 'Capital',
@@ -1465,21 +1616,98 @@ class ResellerWallet extends StatelessWidget {
               color: green,
               icon: Icons.trending_up_rounded,
             ),
-            MetricCard(
-              label: 'Available Balance',
-              value: '৳${demoOms.availableBalanceFor(reseller)}',
-              color: brandDark,
-              icon: Icons.credit_card_rounded,
-            ),
           ],
         ),
-        const SizedBox(height: 12),
-        Panel(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          child: KeyValueRow(
-            'Total wallet balance',
-            '৳$balance',
-            valueColor: brandDark,
+        const SizedBox(height: 16),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [brand, brandDark],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(23),
+            boxShadow: [
+              BoxShadow(
+                color: brand.withValues(alpha: .18),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Total Balance',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    Icons.account_balance_wallet_rounded,
+                    color: Colors.white.withValues(alpha: .8),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '৳$balance',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 30,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: .14),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Available to withdraw',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Flexible(
+                      child: Text(
+                        '৳${demoOms.availableBalanceFor(reseller)}',
+                        textAlign: TextAlign.right,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 20),
@@ -1494,12 +1722,12 @@ class ResellerWallet extends StatelessWidget {
                   if (index > 0) const Divider(color: line),
                   TransactionTile(
                     title:
-                        'Demo batch settlement • Capital ৳${entries[index].capital} + Profit ৳${entries[index].profit}',
+                        'Batch settlement • Capital ৳${entries[index].capital} + Profit ৳${entries[index].profit}',
                     id: entries[index].reference,
                     amount:
                         '+৳${entries[index].capital + entries[index].profit}',
                     date: 'Order ${entries[index].orderId}',
-                    status: 'Demo only',
+                    status: 'Completed',
                     positive: true,
                   ),
                 ],
@@ -1703,9 +1931,7 @@ class _WithdrawPageState extends State<WithdrawPage> {
                         account: account.text.trim(),
                       );
                       setState(() {});
-                      widget.onMessage(
-                        'Demo withdrawal request recorded. No disbursement was made.',
-                      );
+                      widget.onMessage('Withdrawal request recorded.');
                       amount.clear();
                       account.clear();
                     } on StateError catch (error) {
@@ -1984,9 +2210,7 @@ class OrderDetails extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final order =
-        demoOms.orderById(orderId) ??
-        (demoOms.orders.isEmpty ? null : demoOms.orders.first);
+    final order = demoOms.orderById(orderId);
     if (order == null) {
       return const PageBody(
         children: [Panel(child: Text('No order is available.'))],
@@ -2041,7 +2265,7 @@ class OrderDetails extends StatelessWidget {
                             ),
                           ),
                         ),
-                        StatusPill(order.status.name),
+                        StatusPill(_orderStatusLabel(order.status)),
                       ],
                     ),
                   ],
@@ -2095,9 +2319,12 @@ class OrderDetails extends StatelessWidget {
                     KeyValueRow(
                       'Payment status',
                       order.paymentStatus == DemoPaymentStatus.simulated
-                          ? 'DEMO • Not provider-verified'
+                          ? 'Paid'
                           : 'Unpaid',
-                      valueColor: orange,
+                      valueColor:
+                          order.paymentStatus == DemoPaymentStatus.simulated
+                          ? green
+                          : orange,
                     ),
                   ],
                 ),
@@ -2137,15 +2364,13 @@ class OrderDetails extends StatelessWidget {
                 Expanded(
                   flex: 2,
                   child: PrimaryButton(
-                    label: 'Demo Pay & Confirm',
+                    label: 'Pay & Confirm',
                     icon: Icons.check_rounded,
                     onPressed: order.status == DemoOrderStatus.pending
                         ? () {
                             try {
                               demoOms.confirmPayment(order);
-                              onMessage(
-                                'Demo confirmation recorded only; no payment provider was contacted.',
-                              );
+                              onMessage('Payment confirmed successfully.');
                             } on StateError catch (error) {
                               onMessage(error.message);
                             }
@@ -2184,7 +2409,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     final entries = demoOms.auditLog
         .map(
           (message) => (
-            widget.admin ? 'Admin activity' : 'Demo activity',
+            widget.admin ? 'Admin activity' : 'Activity',
             message,
             'This session',
             Icons.notifications_active_rounded,
@@ -2396,6 +2621,111 @@ class ProfilePage extends StatelessWidget {
                 subtitle: const Text('Share this application with others'),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () {},
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class AdminLoginPage extends StatefulWidget {
+  const AdminLoginPage({
+    required this.onSignIn,
+    required this.onMessage,
+    super.key,
+  });
+
+  final Future<void> Function(String email, String password) onSignIn;
+  final ValueChanged<String> onMessage;
+
+  @override
+  State<AdminLoginPage> createState() => _AdminLoginPageState();
+}
+
+class _AdminLoginPageState extends State<AdminLoginPage> {
+  final email = TextEditingController();
+  final password = TextEditingController();
+  bool obscurePassword = true;
+  bool busy = false;
+
+  @override
+  void dispose() {
+    email.dispose();
+    password.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (email.text.trim().isEmpty || password.text.isEmpty) {
+      widget.onMessage('Enter your administrator email and password.');
+      return;
+    }
+    setState(() => busy = true);
+    try {
+      await widget.onSignIn(email.text, password.text);
+    } on FirebaseAuthException catch (error) {
+      widget.onMessage(error.message ?? error.code);
+    } on StateError catch (error) {
+      widget.onMessage(error.message);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PageBody(
+      children: [
+        const SizedBox(height: 24),
+        const Icon(Icons.admin_panel_settings_rounded, size: 58, color: brand),
+        const SizedBox(height: 12),
+        const Text(
+          'Administrator Sign In',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
+        ),
+        const SizedBox(height: 18),
+        Panel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const FieldLabel('EMAIL ADDRESS'),
+              TextField(
+                controller: email,
+                keyboardType: TextInputType.emailAddress,
+                autofillHints: const [AutofillHints.username],
+                decoration: const InputDecoration(
+                  hintText: 'Enter administrator email',
+                ),
+              ),
+              const SizedBox(height: 14),
+              const FieldLabel('PASSWORD'),
+              TextField(
+                controller: password,
+                obscureText: obscurePassword,
+                autofillHints: const [AutofillHints.password],
+                decoration: InputDecoration(
+                  hintText: 'Enter password',
+                  suffixIcon: IconButton(
+                    onPressed: () =>
+                        setState(() => obscurePassword = !obscurePassword),
+                    icon: Icon(
+                      obscurePassword ? Icons.visibility : Icons.visibility_off,
+                    ),
+                  ),
+                ),
+                onSubmitted: (_) => _submit(),
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                child: PrimaryButton(
+                  label: busy ? 'Signing in...' : 'Sign in',
+                  icon: Icons.login_rounded,
+                  onPressed: busy ? null : _submit,
+                ),
               ),
             ],
           ),
@@ -2724,10 +3054,7 @@ class AdminHome extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 18),
-        const SectionTitle(
-          'Recent Orders • Demo',
-          icon: Icons.receipt_long_rounded,
-        ),
+        const SectionTitle('Recent Orders', icon: Icons.receipt_long_rounded),
         Panel(
           child: Column(
             children: demoOms.orders.reversed.take(3).map((order) {
@@ -2869,6 +3196,7 @@ class _AdminCustomersState extends State<AdminCustomers> {
   Future<void> _importCustomers() async {
     try {
       final files = await FilePicker.pickFiles(
+        dialogTitle: 'Select customer Excel file',
         type: FileType.custom,
         allowedExtensions: const ['xlsx'],
       );
@@ -3003,14 +3331,40 @@ class _AdminCustomersState extends State<AdminCustomers> {
                 onPressed: _addCustomer,
               ),
               const SizedBox(height: 8),
-              OutlinedButton.icon(
-                onPressed: _importCustomers,
-                icon: const Icon(Icons.upload_file_rounded),
-                label: const Text('Upload customer Excel file (.xlsx)'),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _importCustomers,
+                      icon: const Icon(Icons.upload_file_rounded, size: 18),
+                      label: const Text(
+                        'Upload Excel',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _saveExcelTemplate(
+                        context,
+                        fileName: 'customer_template.xlsx',
+                        bytes: createCustomerExcelTemplate(),
+                      ),
+                      icon: const Icon(Icons.download_rounded, size: 18),
+                      label: const Text(
+                        'Get Template',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 5),
               const Text(
-                'Excel columns: name, mobile_number, address • Format mobile_number cells as text to preserve leading zeros.',
+                'Excel: name, mobile_number, address (optional). Keep mobile numbers as text.',
                 style: TextStyle(color: muted, fontSize: 12, height: 1.4),
               ),
             ],
@@ -3082,15 +3436,16 @@ class AdminProducts extends StatefulWidget {
 }
 
 class _AdminProductsState extends State<AdminProducts> {
+  final category = TextEditingController();
   final title = TextEditingController();
   final description = TextEditingController();
   final wholesaleController = TextEditingController();
   String? wholesale;
-  String category = 'Electronics';
   String query = '';
 
   @override
   void dispose() {
+    category.dispose();
     title.dispose();
     description.dispose();
     wholesaleController.dispose();
@@ -3100,6 +3455,7 @@ class _AdminProductsState extends State<AdminProducts> {
   Future<void> _importProducts() async {
     try {
       final files = await FilePicker.pickFiles(
+        dialogTitle: 'Select product Excel file',
         type: FileType.custom,
         allowedExtensions: const ['xlsx'],
       );
@@ -3200,15 +3556,11 @@ class _AdminProductsState extends State<AdminProducts> {
     }
   }
 
-  Future<void> _editProduct(
-    DemoProduct product,
-    List<String> categories,
-  ) async {
+  Future<void> _editProduct(DemoProduct product) async {
     final updated = await showDialog<DemoProduct>(
       context: context,
       builder: (dialogContext) => _EditProductDialog(
         product: product,
-        categories: categories,
         onSave: (updated) {
           final duplicateTitle = demoOms.products.any(
             (item) =>
@@ -3276,14 +3628,6 @@ class _AdminProductsState extends State<AdminProducts> {
     final retail = wholesalePrice == null
         ? null
         : (wholesalePrice * (1 + demoOms.settings.profitRate / 100)).round();
-    final categories = <String>{
-      'Electronics',
-      'Fashion',
-      'Home',
-      'Other',
-      ...demoOms.products.map((product) => product.category),
-      category,
-    }.toList()..sort();
     return PageBody(
       children: [
         Panel(
@@ -3291,18 +3635,13 @@ class _AdminProductsState extends State<AdminProducts> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SectionTitle('Add Product', icon: Icons.add_box_rounded),
-              DropdownButtonFormField<String>(
-                initialValue: category,
+              TextField(
+                controller: category,
                 decoration: const InputDecoration(
                   labelText: 'Product Category',
+                  hintText: 'Enter a category',
                   prefixIcon: Icon(Icons.category_rounded),
                 ),
-                items: [
-                  for (final value in categories)
-                    DropdownMenuItem(value: value, child: Text(value)),
-                ],
-                onChanged: (value) =>
-                    setState(() => category = value ?? 'Electronics'),
               ),
               const SizedBox(height: 11),
               TextField(
@@ -3349,7 +3688,8 @@ class _AdminProductsState extends State<AdminProducts> {
                 label: 'Add Product',
                 icon: Icons.add_rounded,
                 onPressed: () {
-                  if (title.text.trim().isEmpty ||
+                  if (category.text.trim().isEmpty ||
+                      title.text.trim().isEmpty ||
                       wholesalePrice == null ||
                       wholesalePrice <= 0 ||
                       wholesalePrice % 50 != 0 ||
@@ -3357,7 +3697,7 @@ class _AdminProductsState extends State<AdminProducts> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text(
-                          'Enter a title and a valid wholesale price in ৳50 multiples.',
+                          'Enter a category, title, and a valid wholesale price in ৳50 multiples.',
                         ),
                       ),
                     );
@@ -3367,29 +3707,55 @@ class _AdminProductsState extends State<AdminProducts> {
                     () => demoOms.products.add(
                       DemoProduct(
                         title: title.text.trim(),
-                        category: category,
+                        category: category.text.trim(),
                         description: description.text.trim(),
                         wholesalePrice: wholesalePrice,
                       ),
                     ),
                   );
                   title.clear();
+                  category.clear();
                   description.clear();
                   wholesaleController.clear();
                   wholesale = null;
-                  category = 'Electronics';
                   setState(() {});
                 },
               ),
               const SizedBox(height: 8),
-              OutlinedButton.icon(
-                onPressed: _importProducts,
-                icon: const Icon(Icons.upload_file_rounded),
-                label: const Text('Upload product Excel file (.xlsx)'),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _importProducts,
+                      icon: const Icon(Icons.upload_file_rounded, size: 18),
+                      label: const Text(
+                        'Upload Excel',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _saveExcelTemplate(
+                        context,
+                        fileName: 'product_template.xlsx',
+                        bytes: createProductExcelTemplate(),
+                      ),
+                      icon: const Icon(Icons.download_rounded, size: 18),
+                      label: const Text(
+                        'Get Template',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 7),
+              const SizedBox(height: 5),
               const Text(
-                'Excel columns: category, title, description, wholesale_price • Price must be a ৳50 multiple; retail is calculated automatically.',
+                'Excel: category, title, description (optional), wholesale_price. Price must be a ৳50 multiple.',
                 style: TextStyle(color: muted, fontSize: 12, height: 1.4),
               ),
             ],
@@ -3436,7 +3802,7 @@ class _AdminProductsState extends State<AdminProducts> {
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       OutlinedButton.icon(
-                        onPressed: () => _editProduct(product, categories),
+                        onPressed: () => _editProduct(product),
                         icon: const Icon(Icons.edit_rounded, size: 18),
                         label: const Text('Edit'),
                       ),
@@ -3465,14 +3831,9 @@ class _AdminProductsState extends State<AdminProducts> {
 }
 
 class _EditProductDialog extends StatefulWidget {
-  const _EditProductDialog({
-    required this.product,
-    required this.categories,
-    required this.onSave,
-  });
+  const _EditProductDialog({required this.product, required this.onSave});
 
   final DemoProduct product;
-  final List<String> categories;
   final ValueChanged<DemoProduct> onSave;
 
   @override
@@ -3480,14 +3841,15 @@ class _EditProductDialog extends StatefulWidget {
 }
 
 class _EditProductDialogState extends State<_EditProductDialog> {
+  late final TextEditingController categoryController;
   late final TextEditingController titleController;
   late final TextEditingController descriptionController;
   late final TextEditingController priceController;
-  late String category;
 
   @override
   void initState() {
     super.initState();
+    categoryController = TextEditingController(text: widget.product.category);
     titleController = TextEditingController(text: widget.product.title);
     descriptionController = TextEditingController(
       text: widget.product.description,
@@ -3495,11 +3857,11 @@ class _EditProductDialogState extends State<_EditProductDialog> {
     priceController = TextEditingController(
       text: '${widget.product.wholesalePrice}',
     );
-    category = widget.product.category;
   }
 
   @override
   void dispose() {
+    categoryController.dispose();
     titleController.dispose();
     descriptionController.dispose();
     priceController.dispose();
@@ -3508,15 +3870,17 @@ class _EditProductDialogState extends State<_EditProductDialog> {
 
   void _save() {
     final title = titleController.text.trim();
+    final category = categoryController.text.trim();
     final wholesalePrice = int.tryParse(priceController.text.trim());
-    if (title.isEmpty ||
+    if (category.isEmpty ||
+        title.isEmpty ||
         wholesalePrice == null ||
         wholesalePrice <= 0 ||
         wholesalePrice % 50 != 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Enter a title and a valid wholesale price in ৳50 multiples.',
+            'Enter a category, title, and a valid wholesale price in ৳50 multiples.',
           ),
         ),
       );
@@ -3540,16 +3904,12 @@ class _EditProductDialogState extends State<_EditProductDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            DropdownButtonFormField<String>(
-              initialValue: category,
-              decoration: const InputDecoration(labelText: 'Product Category'),
-              items: [
-                for (final value in widget.categories)
-                  DropdownMenuItem(value: value, child: Text(value)),
-              ],
-              onChanged: (value) {
-                if (value != null) setState(() => category = value);
-              },
+            TextField(
+              controller: categoryController,
+              decoration: const InputDecoration(
+                labelText: 'Product Category',
+                hintText: 'Enter a category',
+              ),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -3638,7 +3998,7 @@ class _AdminResellersState extends State<AdminResellers> {
                   reseller.active = value;
                   demoOms.auditLog.insert(
                     0,
-                    '${reseller.name} ${value ? 'activated' : 'deactivated'} in demo.',
+                    '${reseller.name} ${value ? 'activated' : 'deactivated'}',
                   );
                 }),
               );
@@ -3936,7 +4296,6 @@ class AdminBatch extends StatefulWidget {
 class _AdminBatchState extends State<AdminBatch> {
   @override
   Widget build(BuildContext context) {
-    final division = demoOms.currentDivision;
     final progress = demoOms.currentBatchTarget == 0
         ? 0.0
         : demoOms.batchPaidTotal / demoOms.currentBatchTarget;
@@ -3988,13 +4347,6 @@ class _AdminBatchState extends State<AdminBatch> {
         Panel(
           child: Column(
             children: [
-              KeyValueRow('Batch target', '৳${demoOms.currentBatchTarget}'),
-              const Divider(height: 1, color: line),
-              KeyValueRow(
-                'Division',
-                division.map((amount) => '৳$amount').join(' + '),
-              ),
-              const Divider(height: 1, color: line),
               KeyValueRow('Growth rate', '${demoOms.settings.growthRate}%'),
               const Divider(height: 1, color: line),
               KeyValueRow('Next batch target', '৳$nextTarget'),
@@ -4052,7 +4404,7 @@ class _AdminBatchState extends State<AdminBatch> {
                     const Padding(
                       padding: EdgeInsets.only(top: 8),
                       child: Text(
-                        'No exact division is available. Add compatible products or update the batch target.',
+                        'Target must equal consecutive ৳50 multiples, such as ৳50 + ৳100 + ৳150 + ৳200.',
                         style: TextStyle(color: red),
                       ),
                     ),
@@ -4070,9 +4422,7 @@ class _AdminBatchState extends State<AdminBatch> {
                   try {
                     demoOms.settleCurrentBatch();
                     setState(() {});
-                    widget.onMessage(
-                      'Demo batch settled and wallet credited. No real funds were moved.',
-                    );
+                    widget.onMessage('Batch settled and wallet credited.');
                   } on StateError catch (error) {
                     widget.onMessage(error.message);
                   }
@@ -4245,7 +4595,7 @@ class _AdminWithdrawalsState extends State<AdminWithdrawals> {
               widget.onMessage(
                 pending == 0
                     ? 'There are no pending requests.'
-                    : '$pending demo request(s) moved to processing.',
+                    : '$pending request(s) moved to processing.',
               );
             },
           ),
@@ -4319,7 +4669,7 @@ class _AdminWithdrawalsState extends State<AdminWithdrawals> {
                                 Navigator.pop(context);
                                 setState(() {});
                                 widget.onMessage(
-                                  '${request.id} moved to demo processing.',
+                                  '${request.id} moved to processing.',
                                 );
                               },
                               child: const Text('Move to Processing'),
@@ -4335,10 +4685,10 @@ class _AdminWithdrawalsState extends State<AdminWithdrawals> {
                                 Navigator.pop(context);
                                 setState(() {});
                                 widget.onMessage(
-                                  'Demo cancellation result recorded; no disbursement was made.',
+                                  'Cancellation result recorded.',
                                 );
                               },
-                              child: const Text('Demo Cancel'),
+                              child: const Text('Cancel'),
                             ),
                             FilledButton(
                               onPressed: () {
@@ -4349,10 +4699,10 @@ class _AdminWithdrawalsState extends State<AdminWithdrawals> {
                                 Navigator.pop(context);
                                 setState(() {});
                                 widget.onMessage(
-                                  'Demo approval recorded only; no provider transaction occurred.',
+                                  'Approval recorded successfully.',
                                 );
                               },
-                              child: const Text('Demo Approve'),
+                              child: const Text('Approve'),
                             ),
                           ],
                         ],
@@ -4495,7 +4845,7 @@ class AdminWallet extends StatelessWidget {
         SizedBox(height: 20),
         SectionTitle('Transaction History', icon: Icons.history_rounded),
         if (demoOms.walletEntries.isEmpty && demoOms.withdrawals.isEmpty)
-          const Panel(child: Text('No demo wallet transactions yet.'))
+          const Panel(child: Text('No wallet transactions yet.'))
         else
           Panel(
             child: Column(
@@ -4512,7 +4862,7 @@ class AdminWallet extends StatelessWidget {
                   (request) => request.status == DemoWithdrawalStatus.approved,
                 ))
                   KeyValueRow(
-                    '${request.id} • ${request.reseller.name} • Demo',
+                    '${request.id} • ${request.reseller.name}',
                     '-৳${request.amount}',
                     valueColor: red,
                   ),
@@ -4525,7 +4875,10 @@ class AdminWallet extends StatelessWidget {
 }
 
 class AdminSettings extends StatefulWidget {
-  const AdminSettings({super.key});
+  const AdminSettings({required this.auth, required this.onSignOut, super.key});
+
+  final AdminAuthService auth;
+  final VoidCallback onSignOut;
 
   @override
   State<AdminSettings> createState() => _AdminSettingsState();
@@ -4544,6 +4897,170 @@ class _AdminSettingsState extends State<AdminSettings> {
   late bool enabled = demoOms.settings.systemEnabled;
   late String profit = '${demoOms.settings.profitRate}%';
   late String growth = '${demoOms.settings.growthRate}%';
+
+  void _showAccountError(Object error) {
+    final message = switch (error) {
+      FirebaseAuthException(:final message, :final code) => message ?? code,
+      StateError(:final message) => message,
+      _ => error.toString(),
+    };
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _changeAdminEmail() async {
+    var currentPassword = '';
+    var newEmail = '';
+    final formKey = GlobalKey<FormState>();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Change admin email'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Current password',
+                ),
+                validator: (value) => (value?.isEmpty ?? true)
+                    ? 'Enter your current password.'
+                    : null,
+                onSaved: (value) => currentPassword = value ?? '',
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(labelText: 'New email'),
+                validator: (value) => (value?.trim().contains('@') ?? false)
+                    ? null
+                    : 'Enter a valid email address.',
+                onSaved: (value) => newEmail = value?.trim() ?? '',
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (!formKey.currentState!.validate()) return;
+              formKey.currentState!.save();
+              Navigator.pop(context, true);
+            },
+            child: const Text('Send verification'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await widget.auth.sendEmailChangeVerification(
+        currentPassword: currentPassword,
+        newEmail: newEmail,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Email verification sent to $newEmail. The address changes after verification.',
+            ),
+          ),
+        );
+      }
+    } on FirebaseAuthException catch (error) {
+      if (mounted) _showAccountError(error);
+    } on StateError catch (error) {
+      if (mounted) _showAccountError(error);
+    }
+  }
+
+  Future<void> _changeAdminPassword() async {
+    var currentPassword = '';
+    var newPassword = '';
+    var newPasswordInput = '';
+    final formKey = GlobalKey<FormState>();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Change admin password'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Current password',
+                ),
+                validator: (value) => (value?.isEmpty ?? true)
+                    ? 'Enter your current password.'
+                    : null,
+                onSaved: (value) => currentPassword = value ?? '',
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'New password'),
+                validator: (value) => (value?.length ?? 0) >= 6
+                    ? null
+                    : 'Password must be at least 6 characters.',
+                onChanged: (value) => newPasswordInput = value,
+                onSaved: (value) => newPassword = value ?? '',
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Confirm new password',
+                ),
+                validator: (value) => value == newPasswordInput
+                    ? null
+                    : 'Passwords do not match.',
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (!formKey.currentState!.validate()) return;
+              formKey.currentState!.save();
+              Navigator.pop(context, true);
+            },
+            child: const Text('Update password'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await widget.auth.changePassword(
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Admin password updated.')),
+        );
+      }
+    } on FirebaseAuthException catch (error) {
+      if (mounted) _showAccountError(error);
+    } on StateError catch (error) {
+      if (mounted) _showAccountError(error);
+    }
+  }
 
   @override
   void dispose() {
@@ -4602,6 +5119,46 @@ class _AdminSettingsState extends State<AdminSettings> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SectionTitle(
+                'Admin Account',
+                icon: Icons.admin_panel_settings_rounded,
+              ),
+              KeyValueRow(
+                'Email address',
+                widget.auth.currentEmail ?? 'Not signed in',
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _changeAdminEmail,
+                  icon: const Icon(Icons.alternate_email_rounded),
+                  label: const Text('Change Email Address'),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _changeAdminPassword,
+                  icon: const Icon(Icons.lock_reset_rounded),
+                  label: const Text('Change Password'),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: widget.onSignOut,
+                icon: const Icon(Icons.logout_rounded),
+                label: const Text('Sign Out'),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Panel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SectionTitle(
                 'System Settings',
                 icon: Icons.settings_rounded,
               ),
@@ -4633,6 +5190,7 @@ class _AdminSettingsState extends State<AdminSettings> {
                 decoration: InputDecoration(
                   labelText: 'Initial Batch Target Amount',
                   hintText: '500',
+                  helperText: 'Target must match a progressive ৳50 division (e.g. ৳500 = ৳50 + ৳100 + ৳150 + ৳200).',
                 ),
               ),
               const SizedBox(height: 12),
@@ -4674,7 +5232,7 @@ class _AdminSettingsState extends State<AdminSettings> {
                   final transferHours = int.tryParse(transfer.text.trim());
                   if (targetAmount == null ||
                       targetAmount <= 0 ||
-                      targetAmount % 50 != 0 ||
+                      DemoOmsStore.divideTarget(targetAmount).isEmpty ||
                       cycleHours == null ||
                       cycleHours <= 0 ||
                       transferHours == null ||
@@ -4682,7 +5240,7 @@ class _AdminSettingsState extends State<AdminSettings> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text(
-                          'Enter a positive batch target in ৳50 multiples and positive whole-number hours.',
+                          'Enter a valid progressive ৳50 batch target (for example ৳500), and positive whole-number hours.',
                         ),
                       ),
                     );
@@ -4711,12 +5269,12 @@ class _AdminSettingsState extends State<AdminSettings> {
                     ..transferHours = transferHours;
                   demoOms.auditLog.insert(
                     0,
-                    'Demo settings saved: system ${enabled ? 'on' : 'off'}, profit ${demoOms.settings.profitRate}%, growth ${demoOms.settings.growthRate}%.',
+                    'Settings saved: system ${enabled ? 'on' : 'off'}, profit ${demoOms.settings.profitRate}%, growth ${demoOms.settings.growthRate}%.',
                   );
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text(
-                        'Demo settings saved. Existing batch target is unchanged; product retail prices use the updated profit rate.',
+                        'Settings saved. Existing batch target is unchanged; product retail prices use the updated profit rate.',
                       ),
                     ),
                   );
@@ -4758,11 +5316,6 @@ class _AdminSettingsState extends State<AdminSettings> {
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 12),
-        const Text(
-          'Partial settlement is disabled. When the active batch target is fully paid, the previous batch is settled, processing orders are delivered, reseller capital and profit are credited, and the next batch is created using the configured growth formula.',
-          style: TextStyle(color: muted, height: 1.55),
         ),
       ],
     );

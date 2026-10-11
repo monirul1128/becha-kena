@@ -254,44 +254,36 @@ class DemoOmsStore {
           )
           .fold(0, (total, item) => total + item.amount);
 
-  List<int> get currentDivision => divideTarget(
-    currentBatchTarget,
-    products.map((product) => product.wholesalePrice).toList(),
-  );
+  List<int> get currentDivision => divideTarget(currentBatchTarget);
 
-  static int calculateNextBatchTarget(int previousTarget, int growthRate) =>
-      (previousTarget * (100 + growthRate) / 5000).round() * 50;
+  static int calculateNextBatchTarget(int previousTarget, int growthRate) {
+    final desiredTarget =
+        (previousTarget * (100 + growthRate) / 5000).round() * 50;
+    var previousTargetOption = 0;
+    for (var count = 1; ; count++) {
+      final targetOption = 25 * count * (count + 1);
+      if (targetOption >= desiredTarget) {
+        final distanceBelow = desiredTarget - previousTargetOption;
+        final distanceAbove = targetOption - desiredTarget;
+        return distanceAbove <= distanceBelow
+            ? targetOption
+            : previousTargetOption;
+      }
+      previousTargetOption = targetOption;
+    }
+  }
 
-  static List<int> divideTarget(int target, List<int> availablePrices) {
-    if (target <= 0 || target % 50 != 0 || availablePrices.isEmpty) {
+  static List<int> divideTarget(int target) {
+    if (target <= 0 || target % 50 != 0) {
       return const [];
     }
-    final prices =
-        availablePrices
-            .where((price) => price > 0 && price % 50 == 0 && price <= target)
-            .toSet()
-            .toList()
-          ..sort((a, b) => b.compareTo(a));
-    if (prices.isEmpty) return const [];
-    final previous = List<int?>.filled(target + 1, null);
-    previous[0] = 0;
-    for (var amount = 1; amount <= target; amount++) {
-      for (final price in prices) {
-        if (amount >= price && previous[amount - price] != null) {
-          previous[amount] = price;
-          break;
-        }
-      }
-    }
-    if (previous[target] == null) return const [];
     final division = <int>[];
-    var remaining = target;
-    while (remaining > 0) {
-      final price = previous[remaining]!;
-      division.add(price);
-      remaining -= price;
+    var total = 0;
+    for (var amount = 50; total < target; amount += 50) {
+      total += amount;
+      division.add(amount);
     }
-    return division;
+    return total == target ? division : const [];
   }
 
   void createNextBatch({bool initial = false}) {
@@ -313,13 +305,10 @@ class DemoOmsStore {
     final target = initial
         ? settings.initialBatchTarget
         : calculateNextBatchTarget(previousTarget!, appliedGrowthRate!);
-    final division = divideTarget(
-      target,
-      products.map((product) => product.wholesalePrice).toList(),
-    );
+    final division = divideTarget(target);
     if (division.isEmpty) {
       throw StateError(
-        'The target cannot be divided using available wholesale prices in ৳50 multiples.',
+        'Target ৳$target must equal the sum of consecutive ৳50 multiples, such as ৳50 + ৳100 + ৳150 + ৳200.',
       );
     }
     if (!initial) {
@@ -337,14 +326,7 @@ class DemoOmsStore {
       ),
     );
     for (final amount in division) {
-      final matchingProducts = products
-          .where((product) => product.wholesalePrice == amount)
-          .toList();
-      if (matchingProducts.isEmpty) {
-        throw StateError('No product is available for the ৳$amount division.');
-      }
-      final product =
-          matchingProducts[_productCursor++ % matchingProducts.length];
+      final product = products[_productCursor++ % products.length];
       final customer = customers[_customerCursor++ % customers.length];
       final active = activeResellers;
       final reseller = active[_resellerCursor++ % active.length];
@@ -356,7 +338,7 @@ class DemoOmsStore {
           product: product,
           reseller: reseller,
           wholesalePrice: amount,
-          retailPrice: product.retailPrice(settings.profitRate),
+          retailPrice: (amount * (100 + settings.profitRate) / 100).round(),
         ),
       );
     }
@@ -377,24 +359,15 @@ class DemoOmsStore {
         'The initial target can only be changed before the first batch receives a payment confirmation.',
       );
     }
-    final division = divideTarget(
-      target,
-      products.map((product) => product.wholesalePrice).toList(),
-    );
-    if (target <= 0 ||
-        target % 50 != 0 ||
-        division.isEmpty ||
-        division.any(
-          (amount) =>
-              !products.any((product) => product.wholesalePrice == amount),
-        )) {
+    final division = divideTarget(target);
+    if (division.isEmpty) {
       throw StateError(
-        'Target ৳$target cannot be divided using available product wholesale prices.',
+        'Target ৳$target must equal the sum of consecutive ৳50 multiples, such as ৳50 + ৳100 + ৳150 + ৳200.',
       );
     }
-    if (customers.isEmpty || activeResellers.isEmpty) {
+    if (products.isEmpty || customers.isEmpty || activeResellers.isEmpty) {
       throw StateError(
-        'Customers and active resellers are required to assign orders.',
+        'Products, customers, and active resellers are required to assign orders.',
       );
     }
     orders.removeWhere((order) => order.batchId == currentBatchId);
@@ -409,11 +382,7 @@ class DemoOmsStore {
       ),
     );
     for (final amount in division) {
-      final matchingProducts = products
-          .where((product) => product.wholesalePrice == amount)
-          .toList();
-      final product =
-          matchingProducts[_productCursor++ % matchingProducts.length];
+      final product = products[_productCursor++ % products.length];
       final customer = customers[_customerCursor++ % customers.length];
       final active = activeResellers;
       final reseller = active[_resellerCursor++ % active.length];
@@ -425,7 +394,7 @@ class DemoOmsStore {
           product: product,
           reseller: reseller,
           wholesalePrice: amount,
-          retailPrice: product.retailPrice(settings.profitRate),
+          retailPrice: (amount * (100 + settings.profitRate) / 100).round(),
         ),
       );
     }
@@ -443,7 +412,7 @@ class DemoOmsStore {
     for (final order in orders) {
       if (order.paymentStatus == DemoPaymentStatus.unpaid &&
           order.status == DemoOrderStatus.pending) {
-        order.retailPrice = order.product.retailPrice(rate);
+        order.retailPrice = (order.wholesalePrice * (100 + rate) / 100).round();
       }
     }
     auditLog.insert(
@@ -526,22 +495,19 @@ class DemoOmsStore {
       currentBatchTarget,
       settings.growthRate,
     );
-    final nextDivision = divideTarget(
-      nextTarget,
-      products.map((product) => product.wholesalePrice).toList(),
-    );
+    final nextDivision = divideTarget(nextTarget);
     if (nextDivision.isEmpty ||
-        nextDivision.any(
-          (amount) =>
-              !products.any((product) => product.wholesalePrice == amount),
-        )) {
+        products.isEmpty ||
+        customers.isEmpty ||
+        activeResellers.isEmpty) {
       throw StateError(
-        'The next target ৳$nextTarget cannot be divided using current products. Update the growth rate or product prices before settlement.',
-      );
-    }
-    if (activeResellers.isEmpty) {
-      throw StateError(
-        'At least one active reseller is required for the next batch.',
+        nextDivision.isEmpty
+            ? 'The next target ৳$nextTarget cannot be divided into consecutive ৳50 multiples.'
+            : products.isEmpty
+            ? 'Add at least one product before creating the next batch.'
+            : customers.isEmpty
+            ? 'Add at least one customer before creating the next batch.'
+            : 'At least one active reseller is required for the next batch.',
       );
     }
     final batchId = currentBatchId;
@@ -763,4 +729,46 @@ List<List<String>> parseExcelRows(List<int> bytes) {
     throw const FormatException('The selected Excel worksheet is empty.');
   }
   return rows;
+}
+
+List<int> createCustomerExcelTemplate() {
+  final workbook = Excel.createExcel();
+  final sheet = workbook[workbook.getDefaultSheet()!];
+  sheet.appendRow([
+    TextCellValue('name'),
+    TextCellValue('mobile_number'),
+    TextCellValue('address'),
+  ]);
+  sheet.appendRow([
+    TextCellValue('Sample Customer'),
+    TextCellValue('01700000000'),
+    TextCellValue('Dhaka'),
+  ]);
+  final bytes = workbook.encode();
+  if (bytes == null) {
+    throw StateError('Unable to create the customer Excel template.');
+  }
+  return bytes;
+}
+
+List<int> createProductExcelTemplate() {
+  final workbook = Excel.createExcel();
+  final sheet = workbook[workbook.getDefaultSheet()!];
+  sheet.appendRow([
+    TextCellValue('category'),
+    TextCellValue('title'),
+    TextCellValue('description'),
+    TextCellValue('wholesale_price'),
+  ]);
+  sheet.appendRow([
+    TextCellValue('Electronics'),
+    TextCellValue('Sample Product'),
+    TextCellValue('Replace this example with your product details.'),
+    IntCellValue(500),
+  ]);
+  final bytes = workbook.encode();
+  if (bytes == null) {
+    throw StateError('Unable to create the product Excel template.');
+  }
+  return bytes;
 }

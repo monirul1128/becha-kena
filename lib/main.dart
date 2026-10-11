@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
@@ -19,13 +17,13 @@ const orange = Color(0xFFE59B13);
 const red = Color(0xFFE45359);
 const blue = Color(0xFF4387ED);
 
-String _csvHeader(String value) =>
+String _tableHeader(String value) =>
     value.trim().toLowerCase().replaceAll(RegExp(r'[\s-]+'), '_');
 
-int _csvColumn(List<String> headers, List<String> candidates) =>
+int _tableColumn(List<String> headers, List<String> candidates) =>
     headers.indexWhere(candidates.contains);
 
-String _csvValue(List<String> row, int index) =>
+String _tableValue(List<String> row, int index) =>
     index >= 0 && index < row.length ? row[index].trim() : '';
 
 class BechaKenaHubApp extends StatelessWidget {
@@ -34,7 +32,7 @@ class BechaKenaHubApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'BechaKena Hub',
+      title: 'BKH Business Manager',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
@@ -104,9 +102,8 @@ const adminMenu = <_NavItem>[
   _NavItem('products', 'Product Management', Icons.inventory_2_rounded),
   _NavItem('resellers', 'Reseller Management', Icons.storefront_rounded),
   _NavItem('batch', 'Batch Management', Icons.layers_rounded),
-  _NavItem('withdrawals', 'Withdrawal Requests', Icons.payments_rounded),
+  _NavItem('withdrawals', 'Withdrawal & Disbursement', Icons.payments_rounded),
   _NavItem('adminOrders', 'Order Management', Icons.receipt_long_rounded),
-  _NavItem('disbursement', 'Disbursement', Icons.account_balance_rounded),
   _NavItem('adminWallet', 'Wallet', Icons.account_balance_wallet_rounded),
   _NavItem('adminNotifications', 'Notifications', Icons.notifications_rounded),
   _NavItem('settings', 'Settings', Icons.settings_rounded),
@@ -279,13 +276,12 @@ class _HubShellState extends State<HubShell> {
       'resellers': 'Reseller Management',
       'batch': 'Batch Management',
       'adminOrders': 'Order Management',
-      'withdrawals': 'Withdrawal Requests',
-      'disbursement': 'Disbursement',
+      'withdrawals': 'Withdrawal & Disbursement',
       'adminWallet': 'Wallet',
       'adminNotifications': 'Notifications',
       'settings': 'System Settings',
     };
-    return titles[page] ?? 'BechaKena Hub';
+    return titles[page] ?? 'BKH Business Manager';
   }
 
   Widget _buildPage() {
@@ -299,7 +295,7 @@ class _HubShellState extends State<HubShell> {
       case 'withdraw':
         return WithdrawPage(onMessage: _message);
       case 'catalog':
-        return ResellerCatalog(onOpen: _go);
+        return const ResellerCatalog();
       case 'orderDetails':
         return OrderDetails(orderId: _selectedOrderId, onMessage: _message);
       case 'notifications':
@@ -324,8 +320,6 @@ class _HubShellState extends State<HubShell> {
         return AdminOrders(onMessage: _message);
       case 'withdrawals':
         return AdminWithdrawals(onMessage: _message);
-      case 'disbursement':
-        return AdminDisbursement(onMessage: _message);
       case 'adminWallet':
         return const AdminWallet();
       case 'adminNotifications':
@@ -373,7 +367,7 @@ class RolePicker extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             const Text(
-              'BechaKena Hub',
+              'BKH Business Manager',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: ink,
@@ -547,7 +541,7 @@ class HubDrawer extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'BechaKena Hub',
+                    'BKH Business Manager',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 20,
@@ -568,25 +562,31 @@ class HubDrawer extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 children: [
                   for (final item in items)
-                    ListTile(
-                      selected: page == item.id,
-                      selectedColor: brand,
-                      selectedTileColor: const Color(0xFFF0F0FF),
-                      leading: Icon(item.icon),
-                      title: Text(
-                        item.label,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
+                    Material(
+                      color: Colors.white,
+                      child: ListTile(
+                        selected: page == item.id,
+                        selectedColor: brand,
+                        selectedTileColor: const Color(0xFFF0F0FF),
+                        leading: Icon(item.icon),
+                        title: Text(
+                          item.label,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        onTap: () => onSelect(item.id),
                       ),
-                      onTap: () => onSelect(item.id),
                     ),
                 ],
               ),
             ),
             const Divider(height: 1),
-            ListTile(
-              leading: const Icon(Icons.swap_horiz_rounded),
-              title: const Text('Switch app section'),
-              onTap: onSwitch,
+            Material(
+              color: Colors.white,
+              child: ListTile(
+                leading: const Icon(Icons.swap_horiz_rounded),
+                title: const Text('Switch app section'),
+                onTap: onSwitch,
+              ),
             ),
           ],
         ),
@@ -943,15 +943,23 @@ class ResellerHome extends StatelessWidget {
       0,
       (total, order) => total + order.profit,
     );
+    int withdrawalCount(DemoWithdrawalStatus status) =>
+        demoOms.withdrawals.where((request) => request.status == status).length;
+    final recentOrders = demoOms.orders.reversed.take(2).toList();
+    final recentPayments = demoOms.orders
+        .where((order) => order.paymentStatus == DemoPaymentStatus.simulated)
+        .toList()
+        .reversed
+        .take(2)
+        .toList();
+    final recentWithdrawals = demoOms.withdrawals
+        .where((request) => request.reseller == demoOms.resellers.first)
+        .toList()
+        .reversed
+        .take(2)
+        .toList();
     return PageBody(
       children: [
-        const Panel(
-          child: Text(
-            'DEMO DATA • All records are in-memory samples. No real payments or disbursements are processed.',
-            style: TextStyle(color: orange, height: 1.4),
-          ),
-        ),
-        const SizedBox(height: 12),
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(23),
@@ -1024,7 +1032,27 @@ class ResellerHome extends StatelessWidget {
           'Payment Overview',
           icon: Icons.account_balance_wallet_rounded,
         ),
+        MetricGrid(
+          items: [
+            MetricCard(
+              label: 'Total Payment',
+              value: '${demoOms.orders.length}',
+              color: brand,
+            ),
+            MetricCard(
+              label: 'Paid (demo)',
+              value: '${simulated.length}',
+              color: green,
+            ),
+            MetricCard(
+              label: 'Unpaid',
+              value: '${demoOms.orders.length - simulated.length}',
+              color: orange,
+            ),
+          ],
+        ),
         Panel(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: Column(
             children: [
               KeyValueRow(
@@ -1041,8 +1069,82 @@ class ResellerHome extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 20),
-        const SectionTitle('Quick Access', icon: Icons.bolt_rounded),
+        const SizedBox(height: 18),
+        const SectionTitle('Withdrawal Overview', icon: Icons.payments_rounded),
+        MetricGrid(
+          items: [
+            MetricCard(
+              label: 'Total Withdraw',
+              value: '${demoOms.withdrawals.length}',
+            ),
+            MetricCard(
+              label: 'Pending',
+              value: '${withdrawalCount(DemoWithdrawalStatus.pending)}',
+              color: orange,
+            ),
+            MetricCard(
+              label: 'Processing',
+              value: '${withdrawalCount(DemoWithdrawalStatus.processing)}',
+              color: blue,
+            ),
+            MetricCard(
+              label: 'Approved',
+              value: '${withdrawalCount(DemoWithdrawalStatus.approved)}',
+              color: green,
+            ),
+            MetricCard(
+              label: 'Cancelled',
+              value: '${withdrawalCount(DemoWithdrawalStatus.cancelled)}',
+              color: red,
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        const SectionTitle('Recent Order', icon: Icons.inventory_2_rounded),
+        if (recentOrders.isEmpty)
+          const Panel(child: Text('No orders yet.'))
+        else
+          for (final order in recentOrders)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _RecentActivityCard(
+                title: '#${order.id}',
+                detail: order.product.title,
+                status: _orderStatusLabel(order.status),
+                onTap: () => onOpen('orderDetails:${order.id}'),
+              ),
+            ),
+        const SizedBox(height: 8),
+        const SectionTitle('Recent Payment', icon: Icons.receipt_long_rounded),
+        if (recentPayments.isEmpty)
+          const Panel(child: Text('No demo payment confirmations yet.'))
+        else
+          for (final order in recentPayments)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _RecentActivityCard(
+                title: 'Demo payment',
+                detail: '#${order.id} • ৳${order.wholesalePrice}',
+                status: 'Demo only',
+              ),
+            ),
+        const SizedBox(height: 8),
+        const SectionTitle('Recent Withdraw', icon: Icons.money_rounded),
+        if (recentWithdrawals.isEmpty)
+          const Panel(child: Text('No withdrawal requests yet.'))
+        else
+          for (final request in recentWithdrawals)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _RecentActivityCard(
+                title: request.id,
+                detail: '${request.method} • ৳${request.amount}',
+                status: _withdrawalStatusLabel(request.status),
+                onTap: () => onOpen('withdraw'),
+              ),
+            ),
+        const SizedBox(height: 8),
+        const SectionTitle('Quick Action', icon: Icons.bolt_rounded),
         Row(
           children: [
             Expanded(
@@ -1063,14 +1165,78 @@ class ResellerHome extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: _QuickLink(
-                icon: Icons.account_balance_wallet_rounded,
-                label: 'Wallet',
-                onTap: () => onOpen('wallet'),
+                icon: Icons.payments_rounded,
+                label: 'Withdraw',
+                onTap: () => onOpen('withdraw'),
               ),
             ),
           ],
         ),
       ],
+    );
+  }
+}
+
+String _orderStatusLabel(DemoOrderStatus status) => switch (status) {
+  DemoOrderStatus.pending => 'Pending',
+  DemoOrderStatus.processing => 'Processing',
+  DemoOrderStatus.delivered => 'Completed',
+  DemoOrderStatus.cancelled => 'Cancelled',
+};
+
+String _withdrawalStatusLabel(DemoWithdrawalStatus status) => switch (status) {
+  DemoWithdrawalStatus.pending => 'Pending',
+  DemoWithdrawalStatus.processing => 'Processing',
+  DemoWithdrawalStatus.approved => 'Approved',
+  DemoWithdrawalStatus.cancelled => 'Cancelled',
+};
+
+class _RecentActivityCard extends StatelessWidget {
+  const _RecentActivityCard({
+    required this.title,
+    required this.detail,
+    required this.status,
+    this.onTap,
+  });
+
+  final String title;
+  final String detail;
+  final String status;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(19),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(19),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        color: ink,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  StatusPill(status),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(detail, style: const TextStyle(color: muted)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1141,19 +1307,13 @@ class _ResellerOrdersState extends State<ResellerOrders> {
         DemoOrderStatus.delivered => 'Delivered',
         DemoOrderStatus.cancelled => 'Cancelled',
       };
-      return filter == 'All' || status == filter;
+      final filterStatus = status == 'Delivered' ? 'Completed' : status;
+      return filter == 'All' || filterStatus == filter;
     }).toList();
 
     return PageBody(
       padding: const EdgeInsets.only(top: 16, bottom: 24),
       children: [
-        const Panel(
-          child: Text(
-            'DEMO WORKSPACE • Sample orders from all reseller accounts are visible. Demo payment confirmations are not verified transactions.',
-            style: TextStyle(color: muted, height: 1.45),
-          ),
-        ),
-        const SizedBox(height: 12),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: FilterChips(
@@ -1161,7 +1321,7 @@ class _ResellerOrdersState extends State<ResellerOrders> {
               'All',
               'Pending',
               'Processing',
-              'Delivered',
+              'Completed',
               'Cancelled',
             ],
             selected: filter,
@@ -1194,7 +1354,7 @@ class _ResellerOrdersState extends State<ResellerOrders> {
                           ),
                         ),
                       ),
-                      StatusPill(order.status.name),
+                      StatusPill(_orderStatusLabel(order.status)),
                     ],
                   ),
                   const SizedBox(height: 14),
@@ -1291,32 +1451,36 @@ class ResellerWallet extends StatelessWidget {
     final balance = reseller.capital + reseller.profit;
     return PageBody(
       children: [
-        const Panel(
-          child: Text(
-            'DEMO WALLET • Credits are simulated accounting entries, not withdrawable real funds.',
-            style: TextStyle(color: orange, height: 1.45),
+        MetricGrid(
+          items: [
+            MetricCard(
+              label: 'Capital',
+              value: '৳${reseller.capital}',
+              color: blue,
+              icon: Icons.savings_rounded,
+            ),
+            MetricCard(
+              label: 'Profit',
+              value: '৳${reseller.profit}',
+              color: green,
+              icon: Icons.trending_up_rounded,
+            ),
+            MetricCard(
+              label: 'Available Balance',
+              value: '৳${demoOms.availableBalanceFor(reseller)}',
+              color: brandDark,
+              icon: Icons.credit_card_rounded,
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Panel(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: KeyValueRow(
+            'Total wallet balance',
+            '৳$balance',
+            valueColor: brandDark,
           ),
-        ),
-        const SizedBox(height: 12),
-        MetricCard(
-          label: 'Capital',
-          value: '৳${reseller.capital}',
-          color: blue,
-          icon: Icons.savings_rounded,
-        ),
-        const SizedBox(height: 12),
-        MetricCard(
-          label: 'Profit',
-          value: '৳${reseller.profit}',
-          color: green,
-          icon: Icons.trending_up_rounded,
-        ),
-        const SizedBox(height: 12),
-        MetricCard(
-          label: 'Available Balance',
-          value: '৳${demoOms.availableBalanceFor(reseller)} / Wallet ৳$balance',
-          color: brandDark,
-          icon: Icons.credit_card_rounded,
         ),
         const SizedBox(height: 20),
         const SectionTitle('Transaction History', icon: Icons.history_rounded),
@@ -1417,6 +1581,7 @@ class _WithdrawPageState extends State<WithdrawPage> {
   final amount = TextEditingController();
   final account = TextEditingController();
   String? method;
+  String filter = 'All';
 
   @override
   void dispose() {
@@ -1429,6 +1594,16 @@ class _WithdrawPageState extends State<WithdrawPage> {
   Widget build(BuildContext context) {
     final reseller = demoOms.resellers.first;
     final available = demoOms.availableBalanceFor(reseller);
+    final requests = demoOms.withdrawals
+        .where((request) => request.reseller == reseller)
+        .where(
+          (request) =>
+              filter == 'All' ||
+              _withdrawalStatusLabel(request.status) == filter,
+        )
+        .toList()
+        .reversed
+        .toList();
     return PageBody(
       children: [
         Panel(
@@ -1547,24 +1722,70 @@ class _WithdrawPageState extends State<WithdrawPage> {
           'Withdrawal Request List',
           icon: Icons.history_rounded,
         ),
-        if (demoOms.withdrawals
-            .where((request) => request.reseller == reseller)
-            .isEmpty)
-          const Panel(child: Text('No withdrawal requests yet.'))
+        FilterChips(
+          options: const [
+            'All',
+            'Pending',
+            'Processing',
+            'Approved',
+            'Cancelled',
+          ],
+          selected: filter,
+          onSelect: (value) => setState(() => filter = value),
+        ),
+        const SizedBox(height: 12),
+        if (requests.isEmpty)
+          Panel(
+            child: Text(
+              filter == 'All'
+                  ? 'No withdrawal requests yet.'
+                  : 'No withdrawal requests match this filter.',
+            ),
+          )
         else
-          for (final request in demoOms.withdrawals.where(
-            (request) => request.reseller == reseller,
-          ))
+          for (final request in requests)
             Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: Panel(
                 child: Column(
                   children: [
-                    KeyValueRow(request.id, '৳${request.amount}'),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            request.id,
+                            style: const TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                        Text(
+                          '-৳${request.amount}',
+                          style: const TextStyle(
+                            color: red,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 17,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
                     const Divider(height: 1, color: line),
                     KeyValueRow('Method', request.method),
                     const Divider(height: 1, color: line),
-                    KeyValueRow('Status', request.status.name),
+                    KeyValueRow(
+                      'Account Number',
+                      _maskedAccount(request.account),
+                    ),
+                    const Divider(height: 1, color: line),
+                    KeyValueRow(
+                      'Status',
+                      _withdrawalStatusLabel(request.status),
+                      valueColor: switch (request.status) {
+                        DemoWithdrawalStatus.pending => orange,
+                        DemoWithdrawalStatus.processing => blue,
+                        DemoWithdrawalStatus.approved => green,
+                        DemoWithdrawalStatus.cancelled => red,
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -1572,6 +1793,12 @@ class _WithdrawPageState extends State<WithdrawPage> {
       ],
     );
   }
+}
+
+String _maskedAccount(String account) {
+  final visibleDigits = account.length < 4 ? account.length : 4;
+  return '${List.filled(account.length - visibleDigits, '*').join()}'
+      '${account.substring(account.length - visibleDigits)}';
 }
 
 class FieldLabel extends StatelessWidget {
@@ -1595,8 +1822,7 @@ class FieldLabel extends StatelessWidget {
 }
 
 class ResellerCatalog extends StatefulWidget {
-  const ResellerCatalog({required this.onOpen, super.key});
-  final ValueChanged<String> onOpen;
+  const ResellerCatalog({super.key});
 
   @override
   State<ResellerCatalog> createState() => _ResellerCatalogState();
@@ -1610,7 +1836,9 @@ class _ResellerCatalogState extends State<ResellerCatalog> {
     final filtered = demoOms.products
         .where(
           (product) =>
-              product.title.toLowerCase().contains(query.toLowerCase()),
+              product.title.toLowerCase().contains(query.toLowerCase()) ||
+              product.category.toLowerCase().contains(query.toLowerCase()) ||
+              product.description.toLowerCase().contains(query.toLowerCase()),
         )
         .toList();
     return PageBody(
@@ -1624,6 +1852,19 @@ class _ResellerCatalogState extends State<ResellerCatalog> {
           ),
         ),
         const SizedBox(height: 17),
+        if (filtered.isEmpty)
+          const Panel(
+            child: Column(
+              children: [
+                Icon(Icons.search_off_rounded, color: muted, size: 34),
+                SizedBox(height: 8),
+                Text(
+                  'No products found.',
+                  style: TextStyle(color: muted, fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+          ),
         for (final product in filtered) ...[
           Panel(
             child: Column(
@@ -1674,7 +1915,52 @@ class _ResellerCatalogState extends State<ResellerCatalog> {
                   child: PrimaryButton(
                     label: 'View Details',
                     icon: Icons.visibility_rounded,
-                    onPressed: () => widget.onOpen('orderDetails'),
+                    onPressed: () => showDialog<void>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Product Details'),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              product.category,
+                              style: const TextStyle(
+                                color: brand,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              product.title,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              product.description,
+                              style: const TextStyle(color: muted, height: 1.4),
+                            ),
+                            const SizedBox(height: 14),
+                            PriceStrip(
+                              wholesale: '৳${product.wholesalePrice}',
+                              retail:
+                                  '৳${product.retailPrice(demoOms.settings.profitRate)}',
+                              profit:
+                                  '৳${product.retailPrice(demoOms.settings.profitRate) - product.wholesalePrice}',
+                            ),
+                          ],
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: const Text('Close'),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -1794,6 +2080,8 @@ class OrderDetails extends StatelessWidget {
                     KeyValueRow('Category', order.product.category),
                     const Divider(height: 1, color: line),
                     KeyValueRow('Title', order.product.title),
+                    const Divider(height: 1, color: line),
+                    KeyValueRow('Description', order.product.description),
                     const Divider(height: 1, color: line),
                     KeyValueRow('Wholesale Price', '৳${order.wholesalePrice}'),
                     const Divider(height: 1, color: line),
@@ -2017,6 +2305,8 @@ class ProfilePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final reseller = demoOms.resellers.first;
+    final accountStatus = reseller.active ? 'Active' : 'Inactive';
     return PageBody(
       children: [
         Panel(
@@ -2031,9 +2321,9 @@ class ProfilePage extends StatelessWidget {
                   shape: BoxShape.circle,
                   gradient: LinearGradient(colors: [brand, brandDark]),
                 ),
-                child: const Text(
-                  'R',
-                  style: TextStyle(
+                child: Text(
+                  reseller.name.substring(0, 1).toUpperCase(),
+                  style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w900,
                     fontSize: 45,
@@ -2041,9 +2331,9 @@ class ProfilePage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 13),
-              const Text(
-                'Reseller Name',
-                style: TextStyle(
+              Text(
+                reseller.name,
+                style: const TextStyle(
                   color: ink,
                   fontSize: 23,
                   fontWeight: FontWeight.w900,
@@ -2055,12 +2345,12 @@ class ProfilePage extends StatelessWidget {
                 style: TextStyle(color: muted, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 12),
-              const StatusPill('Active'),
+              StatusPill(accountStatus),
             ],
           ),
         ),
         const SizedBox(height: 16),
-        const Panel(
+        Panel(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -2073,13 +2363,17 @@ class ProfilePage extends StatelessWidget {
                 ),
               ),
               SizedBox(height: 10),
-              KeyValueRow('Full Name', 'Reseller Name'),
+              KeyValueRow('Full Name', reseller.name),
               Divider(height: 1, color: line),
-              KeyValueRow('Mobile Number', '01*********'),
+              KeyValueRow('Mobile Number', reseller.mobile),
               Divider(height: 1, color: line),
-              KeyValueRow('Email Address', 'reseller@example.com'),
+              KeyValueRow('Email Address', reseller.email),
               Divider(height: 1, color: line),
-              KeyValueRow('Account Status', 'Active', valueColor: green),
+              KeyValueRow(
+                'Account Status',
+                accountStatus,
+                valueColor: reseller.active ? green : red,
+              ),
             ],
           ),
         ),
@@ -2301,13 +2595,6 @@ class AdminHome extends StatelessWidget {
         demoOms.withdrawals.where((request) => request.status == status).length;
     return PageBody(
       children: [
-        const Panel(
-          child: Text(
-            'DEMO DATA • All records are in-memory samples. No real payments or disbursements are processed.',
-            style: TextStyle(color: orange, height: 1.4),
-          ),
-        ),
-        const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.all(21),
           decoration: BoxDecoration(
@@ -2318,7 +2605,7 @@ class AdminHome extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Welcome to BechaKena Hub 👋',
+                'Welcome to BKH Business Manager 👋',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 20,
@@ -2431,8 +2718,8 @@ class AdminHome extends StatelessWidget {
             ),
             ActionChip(
               avatar: const Icon(Icons.account_balance_rounded, color: brand),
-              label: const Text('Disbursement'),
-              onPressed: () => onOpen('disbursement'),
+              label: const Text('Withdrawal & Disbursement'),
+              onPressed: () => onOpen('withdrawals'),
             ),
           ],
         ),
@@ -2583,27 +2870,24 @@ class _AdminCustomersState extends State<AdminCustomers> {
     try {
       final files = await FilePicker.pickFiles(
         type: FileType.custom,
-        allowedExtensions: const ['csv'],
+        allowedExtensions: const ['xlsx'],
       );
       if (!mounted || files.isEmpty) return;
       final file = files.first;
       final bytes = await file.readAsBytes();
       if (!mounted) return;
-      final rows = parseCsvRows(utf8.decode(bytes));
-      if (rows.isEmpty) {
-        throw const FormatException('The selected CSV file is empty.');
-      }
-      final header = rows.first.map(_csvHeader).toList();
-      final nameIndex = _csvColumn(header, const ['name', 'customer_name']);
-      final mobileIndex = _csvColumn(header, const [
+      final rows = parseExcelRows(bytes);
+      final header = rows.first.map(_tableHeader).toList();
+      final nameIndex = _tableColumn(header, const ['name', 'customer_name']);
+      final mobileIndex = _tableColumn(header, const [
         'mobile',
         'mobile_number',
         'phone',
       ]);
-      final addressIndex = _csvColumn(header, const ['address']);
+      final addressIndex = _tableColumn(header, const ['address']);
       if (nameIndex < 0 || mobileIndex < 0) {
         throw const FormatException(
-          'Customer CSV must include name and mobile_number columns.',
+          'The Excel header row must include name and mobile_number columns.',
         );
       }
       var imported = 0;
@@ -2613,8 +2897,8 @@ class _AdminCustomersState extends State<AdminCustomers> {
           .toSet();
       final newCustomers = <DemoCustomer>[];
       for (final columns in rows.skip(1)) {
-        final rowName = _csvValue(columns, nameIndex);
-        final mobile = _csvValue(columns, mobileIndex);
+        final rowName = _tableValue(columns, nameIndex);
+        final mobile = _tableValue(columns, mobileIndex);
         if (rowName.isEmpty || mobile.isEmpty || !mobileNumbers.add(mobile)) {
           skipped++;
           continue;
@@ -2623,9 +2907,9 @@ class _AdminCustomersState extends State<AdminCustomers> {
           DemoCustomer(
             rowName,
             mobile,
-            _csvValue(columns, addressIndex).isEmpty
+            _tableValue(columns, addressIndex).isEmpty
                 ? '—'
-                : _csvValue(columns, addressIndex),
+                : _tableValue(columns, addressIndex),
           ),
         );
         imported++;
@@ -2644,7 +2928,17 @@ class _AdminCustomersState extends State<AdminCustomers> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Customer CSV import failed: ${error.message}'),
+            content: Text('Customer Excel import failed: ${error.message}'),
+          ),
+        );
+      }
+    } on UnsupportedError catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Customer Excel import failed: ${error.message ?? error.toString()}',
+            ),
           ),
         );
       }
@@ -2653,7 +2947,7 @@ class _AdminCustomersState extends State<AdminCustomers> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Customer CSV import failed: ${error.message ?? error.code}',
+              'Customer Excel import failed: ${error.message ?? error.code}',
             ),
           ),
         );
@@ -2712,11 +3006,11 @@ class _AdminCustomersState extends State<AdminCustomers> {
               OutlinedButton.icon(
                 onPressed: _importCustomers,
                 icon: const Icon(Icons.upload_file_rounded),
-                label: const Text('Select customer CSV to bulk upload'),
+                label: const Text('Upload customer Excel file (.xlsx)'),
               ),
               const SizedBox(height: 6),
               const Text(
-                'CSV columns: name,mobile_number,address • Phone numbers are imported as text, preserving leading zeros.',
+                'Excel columns: name, mobile_number, address • Format mobile_number cells as text to preserve leading zeros.',
                 style: TextStyle(color: muted, fontSize: 12, height: 1.4),
               ),
             ],
@@ -2807,31 +3101,31 @@ class _AdminProductsState extends State<AdminProducts> {
     try {
       final files = await FilePicker.pickFiles(
         type: FileType.custom,
-        allowedExtensions: const ['csv'],
+        allowedExtensions: const ['xlsx'],
       );
       if (!mounted || files.isEmpty) return;
       final file = files.first;
       final bytes = await file.readAsBytes();
       if (!mounted) return;
-      final rows = parseCsvRows(utf8.decode(bytes));
-      if (rows.isEmpty) {
-        throw const FormatException('The selected CSV file is empty.');
-      }
-      final headers = rows.first.map(_csvHeader).toList();
-      final categoryIndex = _csvColumn(headers, const ['category']);
-      final titleIndex = _csvColumn(headers, const ['title', 'product_title']);
-      final descriptionIndex = _csvColumn(headers, const [
+      final rows = parseExcelRows(bytes);
+      final headers = rows.first.map(_tableHeader).toList();
+      final categoryIndex = _tableColumn(headers, const ['category']);
+      final titleIndex = _tableColumn(headers, const [
+        'title',
+        'product_title',
+      ]);
+      final descriptionIndex = _tableColumn(headers, const [
         'description',
         'details',
       ]);
-      final wholesaleIndex = _csvColumn(headers, const [
+      final wholesaleIndex = _tableColumn(headers, const [
         'wholesale_price',
         'wholesale',
         'price',
       ]);
       if (categoryIndex < 0 || titleIndex < 0 || wholesaleIndex < 0) {
         throw const FormatException(
-          'Product CSV must include category, title, and wholesale_price columns.',
+          'The Excel header row must include category, title, and wholesale_price columns.',
         );
       }
       final knownTitles = demoOms.products
@@ -2840,9 +3134,9 @@ class _AdminProductsState extends State<AdminProducts> {
       final imported = <DemoProduct>[];
       var skipped = 0;
       for (final row in rows.skip(1)) {
-        final productCategory = _csvValue(row, categoryIndex);
-        final productTitle = _csvValue(row, titleIndex);
-        final rawPrice = _csvValue(row, wholesaleIndex);
+        final productCategory = _tableValue(row, categoryIndex);
+        final productTitle = _tableValue(row, titleIndex);
+        final rawPrice = _tableValue(row, wholesaleIndex);
         final wholesalePrice = int.tryParse(
           rawPrice.replaceAll(RegExp(r'^[৳$]\s*'), '').replaceAll(',', ''),
         );
@@ -2859,7 +3153,7 @@ class _AdminProductsState extends State<AdminProducts> {
           DemoProduct(
             title: productTitle,
             category: productCategory,
-            description: _csvValue(row, descriptionIndex),
+            description: _tableValue(row, descriptionIndex),
             wholesalePrice: wholesalePrice,
           ),
         );
@@ -2879,7 +3173,17 @@ class _AdminProductsState extends State<AdminProducts> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Product CSV import failed: ${error.message}'),
+            content: Text('Product Excel import failed: ${error.message}'),
+          ),
+        );
+      }
+    } on UnsupportedError catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Product Excel import failed: ${error.message ?? error.toString()}',
+            ),
           ),
         );
       }
@@ -2888,12 +3192,76 @@ class _AdminProductsState extends State<AdminProducts> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Product CSV import failed: ${error.message ?? error.code}',
+              'Product Excel import failed: ${error.message ?? error.code}',
             ),
           ),
         );
       }
     }
+  }
+
+  Future<void> _editProduct(
+    DemoProduct product,
+    List<String> categories,
+  ) async {
+    final updated = await showDialog<DemoProduct>(
+      context: context,
+      builder: (dialogContext) => _EditProductDialog(
+        product: product,
+        categories: categories,
+        onSave: (updated) {
+          final duplicateTitle = demoOms.products.any(
+            (item) =>
+                !identical(item, product) &&
+                item.title.toLowerCase() == updated.title.toLowerCase(),
+          );
+          if (duplicateTitle) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('A product with that title already exists.'),
+              ),
+            );
+            return;
+          }
+          Navigator.of(dialogContext).pop(updated);
+        },
+      ),
+    );
+    if (!mounted || updated == null) return;
+    final index = demoOms.products.indexOf(product);
+    if (index < 0) return;
+    setState(() => demoOms.products[index] = updated);
+    demoOms.auditLog.insert(0, 'Product "${updated.title}" updated.');
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Product updated.')));
+  }
+
+  Future<void> _deleteProduct(DemoProduct product) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete product?'),
+        content: Text(
+          'Delete "${product.title}" from the product catalog? Existing orders will keep their saved product details.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: red),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || confirmed != true) return;
+    setState(() => demoOms.products.remove(product));
+    demoOms.auditLog.insert(0, 'Product "${product.title}" deleted.');
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Product deleted.')));
   }
 
   @override
@@ -2923,14 +3291,6 @@ class _AdminProductsState extends State<AdminProducts> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SectionTitle('Add Product', icon: Icons.add_box_rounded),
-              TextField(
-                controller: title,
-                decoration: const InputDecoration(
-                  labelText: 'Title',
-                  hintText: 'Product title',
-                ),
-              ),
-              const SizedBox(height: 11),
               DropdownButtonFormField<String>(
                 initialValue: category,
                 decoration: const InputDecoration(
@@ -2943,6 +3303,14 @@ class _AdminProductsState extends State<AdminProducts> {
                 ],
                 onChanged: (value) =>
                     setState(() => category = value ?? 'Electronics'),
+              ),
+              const SizedBox(height: 11),
+              TextField(
+                controller: title,
+                decoration: const InputDecoration(
+                  labelText: 'Title',
+                  hintText: 'Product title',
+                ),
               ),
               const SizedBox(height: 11),
               TextField(
@@ -3017,11 +3385,11 @@ class _AdminProductsState extends State<AdminProducts> {
               OutlinedButton.icon(
                 onPressed: _importProducts,
                 icon: const Icon(Icons.upload_file_rounded),
-                label: const Text('Select product CSV to bulk upload'),
+                label: const Text('Upload product Excel file (.xlsx)'),
               ),
               const SizedBox(height: 7),
               const Text(
-                'CSV columns: category,title,description,wholesale_price • Price must be a ৳50 multiple; retail is calculated automatically.',
+                'Excel columns: category, title, description, wholesale_price • Price must be a ৳50 multiple; retail is calculated automatically.',
                 style: TextStyle(color: muted, fontSize: 12, height: 1.4),
               ),
             ],
@@ -3063,10 +3431,156 @@ class _AdminProductsState extends State<AdminProducts> {
                     'Retail Price',
                     '৳${product.retailPrice(demoOms.settings.profitRate)}',
                   ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: () => _editProduct(product, categories),
+                        icon: const Icon(Icons.edit_rounded, size: 18),
+                        label: const Text('Edit'),
+                      ),
+                      const SizedBox(width: 8),
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: red,
+                          side: BorderSide(color: red.withValues(alpha: .5)),
+                        ),
+                        onPressed: () => _deleteProduct(product),
+                        icon: const Icon(
+                          Icons.delete_outline_rounded,
+                          size: 18,
+                        ),
+                        label: const Text('Delete'),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
           ),
+      ],
+    );
+  }
+}
+
+class _EditProductDialog extends StatefulWidget {
+  const _EditProductDialog({
+    required this.product,
+    required this.categories,
+    required this.onSave,
+  });
+
+  final DemoProduct product;
+  final List<String> categories;
+  final ValueChanged<DemoProduct> onSave;
+
+  @override
+  State<_EditProductDialog> createState() => _EditProductDialogState();
+}
+
+class _EditProductDialogState extends State<_EditProductDialog> {
+  late final TextEditingController titleController;
+  late final TextEditingController descriptionController;
+  late final TextEditingController priceController;
+  late String category;
+
+  @override
+  void initState() {
+    super.initState();
+    titleController = TextEditingController(text: widget.product.title);
+    descriptionController = TextEditingController(
+      text: widget.product.description,
+    );
+    priceController = TextEditingController(
+      text: '${widget.product.wholesalePrice}',
+    );
+    category = widget.product.category;
+  }
+
+  @override
+  void dispose() {
+    titleController.dispose();
+    descriptionController.dispose();
+    priceController.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final title = titleController.text.trim();
+    final wholesalePrice = int.tryParse(priceController.text.trim());
+    if (title.isEmpty ||
+        wholesalePrice == null ||
+        wholesalePrice <= 0 ||
+        wholesalePrice % 50 != 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Enter a title and a valid wholesale price in ৳50 multiples.',
+          ),
+        ),
+      );
+      return;
+    }
+    widget.onSave(
+      DemoProduct(
+        title: title,
+        category: category,
+        description: descriptionController.text.trim(),
+        wholesalePrice: wholesalePrice,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Edit Product'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButtonFormField<String>(
+              initialValue: category,
+              decoration: const InputDecoration(labelText: 'Product Category'),
+              items: [
+                for (final value in widget.categories)
+                  DropdownMenuItem(value: value, child: Text(value)),
+              ],
+              onChanged: (value) {
+                if (value != null) setState(() => category = value);
+              },
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: titleController,
+              decoration: const InputDecoration(labelText: 'Title'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: priceController,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: const InputDecoration(
+                labelText: 'Wholesale Price',
+                helperText: 'Must be a positive multiple of ৳50.',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: descriptionController,
+              decoration: const InputDecoration(labelText: 'Description'),
+              maxLines: 3,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(onPressed: _save, child: const Text('Save Changes')),
       ],
     );
   }
@@ -3089,24 +3603,46 @@ class _AdminResellersState extends State<AdminResellers> {
           icon: Icons.storefront_rounded,
         ),
         for (final reseller in demoOms.resellers) ...[
-          ResellerAdminCard(
-            name: reseller.name,
-            mobile: reseller.mobile,
-            email: reseller.email,
-            orders: demoOms.orders
-                .where((order) => order.reseller == reseller)
-                .length
-                .toString(),
-            wallet: '৳${reseller.capital + reseller.profit}',
-            status: reseller.active ? 'Active' : 'Inactive',
-            active: reseller.active,
-            onActiveChanged: (value) => setState(() {
-              reseller.active = value;
-              demoOms.auditLog.insert(
-                0,
-                '${reseller.name} ${value ? 'activated' : 'deactivated'} in demo.',
+          Builder(
+            builder: (context) {
+              final resellerOrders = demoOms.orders
+                  .where((order) => order.reseller == reseller)
+                  .toList();
+              int countOrders(DemoOrderStatus status) => resellerOrders
+                  .where((order) => order.status == status)
+                  .length;
+              final resellerWithdrawals = demoOms.withdrawals.where(
+                (request) => request.reseller == reseller,
               );
-            }),
+              final withdrawn = resellerWithdrawals
+                  .where(
+                    (request) =>
+                        request.status != DemoWithdrawalStatus.cancelled,
+                  )
+                  .fold<int>(0, (total, request) => total + request.amount);
+              return ResellerAdminCard(
+                name: reseller.name,
+                mobile: reseller.mobile,
+                email: reseller.email,
+                pendingOrders: countOrders(DemoOrderStatus.pending),
+                processingOrders: countOrders(DemoOrderStatus.processing),
+                deliveredOrders: countOrders(DemoOrderStatus.delivered),
+                cancelledOrders: countOrders(DemoOrderStatus.cancelled),
+                capital: reseller.capital,
+                profit: reseller.profit,
+                currentBalance: demoOms.availableBalanceFor(reseller),
+                withdrawn: withdrawn,
+                status: reseller.active ? 'Active' : 'Inactive',
+                active: reseller.active,
+                onActiveChanged: (value) => setState(() {
+                  reseller.active = value;
+                  demoOms.auditLog.insert(
+                    0,
+                    '${reseller.name} ${value ? 'activated' : 'deactivated'} in demo.',
+                  );
+                }),
+              );
+            },
           ),
           const SizedBox(height: 12),
         ],
@@ -3120,8 +3656,14 @@ class ResellerAdminCard extends StatelessWidget {
     required this.name,
     required this.mobile,
     required this.email,
-    required this.orders,
-    required this.wallet,
+    required this.pendingOrders,
+    required this.processingOrders,
+    required this.deliveredOrders,
+    required this.cancelledOrders,
+    required this.capital,
+    required this.profit,
+    required this.currentBalance,
+    required this.withdrawn,
     required this.status,
     this.active = true,
     this.onActiveChanged,
@@ -3130,8 +3672,14 @@ class ResellerAdminCard extends StatelessWidget {
   final String name;
   final String mobile;
   final String email;
-  final String orders;
-  final String wallet;
+  final int pendingOrders;
+  final int processingOrders;
+  final int deliveredOrders;
+  final int cancelledOrders;
+  final int capital;
+  final int profit;
+  final int currentBalance;
+  final int withdrawn;
   final String status;
   final bool active;
   final ValueChanged<bool>? onActiveChanged;
@@ -3161,16 +3709,37 @@ class ResellerAdminCard extends StatelessWidget {
           const Divider(height: 1, color: line),
           KeyValueRow('Email', email),
           const Divider(height: 1, color: line),
-          KeyValueRow('Orders', orders),
+          const SizedBox(height: 8),
+          const SectionTitle('Orders', icon: Icons.inventory_2_rounded),
+          KeyValueRow('Pending', '$pendingOrders', valueColor: orange),
           const Divider(height: 1, color: line),
-          KeyValueRow('Wallet', wallet),
+          KeyValueRow('Processing', '$processingOrders', valueColor: blue),
+          const Divider(height: 1, color: line),
+          KeyValueRow('Delivered', '$deliveredOrders', valueColor: green),
+          const Divider(height: 1, color: line),
+          KeyValueRow('Cancelled', '$cancelledOrders', valueColor: red),
+          const SizedBox(height: 8),
+          const SectionTitle(
+            'Wallet',
+            icon: Icons.account_balance_wallet_rounded,
+          ),
+          KeyValueRow('Capital', '৳$capital', valueColor: blue),
+          const Divider(height: 1, color: line),
+          KeyValueRow('Profit', '৳$profit', valueColor: green),
+          const Divider(height: 1, color: line),
+          KeyValueRow('Current Balance', '৳$currentBalance'),
+          const Divider(height: 1, color: line),
+          KeyValueRow('Withdraw', '৳$withdrawn', valueColor: red),
           if (onActiveChanged != null)
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(active ? 'Reseller active' : 'Reseller inactive'),
-              value: active,
-              activeThumbColor: brand,
-              onChanged: onActiveChanged,
+            Material(
+              color: Colors.white,
+              child: SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(active ? 'Reseller active' : 'Reseller inactive'),
+                value: active,
+                activeThumbColor: brand,
+                onChanged: onActiveChanged,
+              ),
             ),
         ],
       ),
@@ -3189,6 +3758,7 @@ class AdminOrders extends StatefulWidget {
 class _AdminOrdersState extends State<AdminOrders> {
   String query = '';
   String filter = 'All';
+  String batchFilter = demoOms.currentBatchId;
 
   String _label(DemoOrderStatus status) => switch (status) {
     DemoOrderStatus.pending => 'Pending',
@@ -3199,8 +3769,14 @@ class _AdminOrdersState extends State<AdminOrders> {
 
   @override
   Widget build(BuildContext context) {
+    final selectedBatch = demoOms.batches.where(
+      (batch) => batch.id == batchFilter,
+    );
+    final batch = selectedBatch.isEmpty ? null : selectedBatch.first;
     final orders = demoOms.orders.where((order) {
       final matchesStatus = filter == 'All' || _label(order.status) == filter;
+      final matchesBatch =
+          batchFilter == 'All Batches' || order.batchId == batchFilter;
       final searchText = [
         order.id,
         order.batchId,
@@ -3208,16 +3784,49 @@ class _AdminOrdersState extends State<AdminOrders> {
         order.product.title,
         order.reseller.name,
       ].join(' ').toLowerCase();
-      return matchesStatus && searchText.contains(query.toLowerCase());
+      return matchesStatus &&
+          matchesBatch &&
+          searchText.contains(query.toLowerCase());
     }).toList();
     return PageBody(
       children: [
-        const Panel(
-          child: Text(
-            'DEMO ORDERS • Payment status reflects simulated confirmation only; verify real provider transactions on a secured backend.',
-            style: TextStyle(color: orange, height: 1.45),
-          ),
+        DropdownButtonFormField<String>(
+          initialValue: batchFilter,
+          decoration: const InputDecoration(labelText: 'Batch'),
+          items: [
+            const DropdownMenuItem(
+              value: 'All Batches',
+              child: Text('All Batches'),
+            ),
+            for (final item in demoOms.batches.reversed)
+              DropdownMenuItem(value: item.id, child: Text(item.id)),
+          ],
+          onChanged: (value) {
+            if (value != null) setState(() => batchFilter = value);
+          },
         ),
+        if (batch != null) ...[
+          const SizedBox(height: 12),
+          Panel(
+            child: Column(
+              children: [
+                KeyValueRow('Batch target', '৳${batch.target}'),
+                const Divider(height: 1, color: line),
+                KeyValueRow(
+                  'Batch payment',
+                  '৳${demoOms.paidTotalFor(batch.id)} / ৳${batch.target}',
+                ),
+                const Divider(height: 1, color: line),
+                KeyValueRow(
+                  'Settlement',
+                  demoOms.settledBatchIds.contains(batch.id)
+                      ? 'Settled'
+                      : 'Pending',
+                ),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 12),
         TextField(
           onChanged: (value) => setState(() => query = value.trim()),
@@ -3271,7 +3880,7 @@ class _AdminOrdersState extends State<AdminOrders> {
                   const Divider(height: 1, color: line),
                   KeyValueRow('Retail', '৳${order.retailPrice}'),
                   const Divider(height: 1, color: line),
-                  KeyValueRow('Reseller', order.reseller.name),
+                  KeyValueRow('Assignment', order.reseller.name),
                   const Divider(height: 1, color: line),
                   KeyValueRow(
                     'Payment status',
@@ -3282,6 +3891,13 @@ class _AdminOrdersState extends State<AdminOrders> {
                   ),
                   const Divider(height: 1, color: line),
                   KeyValueRow('Transfer number', '${order.transferNumber}'),
+                  const Divider(height: 1, color: line),
+                  KeyValueRow(
+                    'Settlement',
+                    demoOms.settledBatchIds.contains(order.batchId)
+                        ? 'Settled • Credited'
+                        : 'Pending',
+                  ),
                   if (order.status == DemoOrderStatus.pending) ...[
                     const SizedBox(height: 10),
                     OutlinedButton.icon(
@@ -3321,15 +3937,13 @@ class _AdminBatchState extends State<AdminBatch> {
   @override
   Widget build(BuildContext context) {
     final division = demoOms.currentDivision;
-    final batchOrders = demoOms.orders
-        .where((order) => order.batchId == demoOms.currentBatchId)
-        .toList();
     final progress = demoOms.currentBatchTarget == 0
         ? 0.0
         : demoOms.batchPaidTotal / demoOms.currentBatchTarget;
-    final nextTarget =
-        (demoOms.currentBatchTarget * (100 + demoOms.settings.growthRate) / 100)
-            .round();
+    final nextTarget = DemoOmsStore.calculateNextBatchTarget(
+      demoOms.currentBatchTarget,
+      demoOms.settings.growthRate,
+    );
     return PageBody(
       children: [
         Panel(
@@ -3367,11 +3981,6 @@ class _AdminBatchState extends State<AdminBatch> {
                 color: green,
                 backgroundColor: canvas,
               ),
-              const SizedBox(height: 14),
-              const Text(
-                'DEMO WORKSPACE • Confirmations and wallet credits below are simulated only; no payment provider or bank was contacted.',
-                style: TextStyle(color: orange, height: 1.4),
-              ),
             ],
           ),
         ),
@@ -3400,59 +4009,57 @@ class _AdminBatchState extends State<AdminBatch> {
           ),
         ),
         const SizedBox(height: 18),
-        const SectionTitle('Division & Assignment'),
-        if (division.isEmpty)
-          const Panel(
-            child: Text(
-              'No exact division is available. Add compatible products or update the batch target.',
-              style: TextStyle(color: red),
-            ),
-          )
-        else
-          for (var index = 0; index < division.length; index++)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Panel(
-                child: Column(
-                  children: [
-                    KeyValueRow(
-                      'Order • Wholesale',
-                      '${index < batchOrders.length ? batchOrders[index].id : '—'} • ৳${division[index]}',
-                    ),
-                    if (index < batchOrders.length) ...[
-                      const Divider(height: 1, color: line),
-                      KeyValueRow('Customer', batchOrders[index].customer.name),
-                      const Divider(height: 1, color: line),
-                      KeyValueRow('Product', batchOrders[index].product.title),
-                      const Divider(height: 1, color: line),
-                      KeyValueRow('Reseller', batchOrders[index].reseller.name),
-                      const Divider(height: 1, color: line),
-                      KeyValueRow(
-                        'Transfer number',
-                        '${batchOrders[index].transferNumber}',
+        const SectionTitle('Batch Calculations & Division'),
+        for (final batch in demoOms.batches.reversed)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Panel(
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          batch.id,
+                          style: const TextStyle(fontWeight: FontWeight.w900),
+                        ),
                       ),
-                      const SizedBox(height: 7),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            batchOrders[index].paymentStatus ==
-                                    DemoPaymentStatus.simulated
-                                ? 'DEMO • Not verified'
-                                : 'Unpaid',
-                            style: const TextStyle(
-                              color: orange,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          StatusPill(batchOrders[index].status.name),
-                        ],
+                      StatusPill(
+                        demoOms.settledBatchIds.contains(batch.id)
+                            ? 'Settled'
+                            : 'Active',
                       ),
                     ],
-                  ],
-                ),
+                  ),
+                  const Divider(height: 16, color: line),
+                  KeyValueRow(
+                    'Target calculation',
+                    batch.previousTarget == null
+                        ? 'Initial target'
+                        : '৳${batch.previousTarget} × ${100 + batch.growthRate!}% → ৳${batch.target}',
+                  ),
+                  const Divider(height: 1, color: line),
+                  KeyValueRow(
+                    'Division (৳50 units)',
+                    batch.division.map((amount) => '৳$amount').join(' + '),
+                  ),
+                  const Divider(height: 1, color: line),
+                  KeyValueRow(
+                    'Paid',
+                    '৳${demoOms.paidTotalFor(batch.id)} / ৳${batch.target}',
+                  ),
+                  if (batch.division.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8),
+                      child: Text(
+                        'No exact division is available. Add compatible products or update the batch target.',
+                        style: TextStyle(color: red),
+                      ),
+                    ),
+                ],
               ),
             ),
+          ),
         const SizedBox(height: 12),
         PrimaryButton(
           label: 'Settle full batch & create next',
@@ -3489,6 +4096,126 @@ class AdminWithdrawals extends StatefulWidget {
 
 class _AdminWithdrawalsState extends State<AdminWithdrawals> {
   String filter = 'All';
+
+  String _escapeCsv(String value) => '"${value.replaceAll('"', '""')}"';
+
+  Future<void> _copyProcessingCsv() async {
+    final processing = demoOms.withdrawals.where(
+      (request) => request.status == DemoWithdrawalStatus.processing,
+    );
+    final rows = <String>['reference,amount,method,account,reseller'];
+    for (final request in processing) {
+      rows.add(
+        [
+          request.id,
+          request.amount.toString(),
+          request.method,
+          request.account,
+          request.reseller.name,
+        ].map(_escapeCsv).join(','),
+      );
+    }
+    try {
+      await Clipboard.setData(ClipboardData(text: rows.join('\n')));
+      if (!mounted) return;
+      widget.onMessage(
+        'Processing-request CSV copied to clipboard. No payments were sent.',
+      );
+    } on PlatformException catch (error) {
+      if (mounted) {
+        widget.onMessage(
+          'Could not copy the CSV: ${error.message ?? error.code}',
+        );
+      }
+    }
+  }
+
+  Future<void> _pasteResults() async {
+    final input = TextEditingController();
+    try {
+      final content = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Upload disbursement result'),
+          content: SizedBox(
+            width: 460,
+            child: TextField(
+              controller: input,
+              minLines: 5,
+              maxLines: 10,
+              decoration: const InputDecoration(
+                hintText: 'reference,status\\nWD-5001,approved',
+                helperText: 'Paste result CSV rows: withdrawal reference, approved or cancelled',
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, input.text),
+              child: const Text('Validate & record result'),
+            ),
+          ],
+        ),
+      );
+      if (!mounted || content == null) return;
+      final parsed = <(DemoWithdrawal, bool)>[];
+      final seen = <String>{};
+      final issues = <String>[];
+      for (final line in content.split(RegExp(r'\r?\n'))) {
+        final trimmed = line.trim();
+        if (trimmed.isEmpty || trimmed.toLowerCase().startsWith('reference,')) {
+          continue;
+        }
+        final columns = trimmed
+            .split(',')
+            .map((value) => value.trim())
+            .toList();
+        if (columns.length != 2 || !seen.add(columns[0])) {
+          issues.add('Malformed or duplicate row: $trimmed');
+          continue;
+        }
+        DemoWithdrawal? request;
+        for (final candidate in demoOms.withdrawals) {
+          if (candidate.id == columns[0]) {
+            request = candidate;
+            break;
+          }
+        }
+        if (request == null ||
+            request.status != DemoWithdrawalStatus.processing) {
+          issues.add('Unknown or non-processing request: ${columns[0]}');
+          continue;
+        }
+        final status = columns[1].toLowerCase();
+        if (status != 'approved' && status != 'cancelled') {
+          issues.add('Unsupported result for ${columns[0]}: ${columns[1]}');
+          continue;
+        }
+        parsed.add((request, status == 'approved'));
+      }
+      if (issues.isNotEmpty || parsed.isEmpty) {
+        widget.onMessage(
+          issues.isEmpty
+              ? 'No valid result rows were provided.'
+              : issues.take(2).join(' • '),
+        );
+        return;
+      }
+      for (final result in parsed) {
+        demoOms.applyDemoDisbursementResult(result.$1, approved: result.$2);
+      }
+      setState(() {});
+      widget.onMessage(
+        'Recorded ${parsed.length} result(s). Provider transactions were not verified.',
+      );
+    } finally {
+      input.dispose();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -3641,161 +4368,8 @@ class _AdminWithdrawalsState extends State<AdminWithdrawals> {
               ),
             ),
           ),
-      ],
-    );
-  }
-}
-
-class AdminDisbursement extends StatefulWidget {
-  const AdminDisbursement({required this.onMessage, super.key});
-  final ValueChanged<String> onMessage;
-
-  @override
-  State<AdminDisbursement> createState() => _AdminDisbursementState();
-}
-
-class _AdminDisbursementState extends State<AdminDisbursement> {
-  String _escapeCsv(String value) => '"${value.replaceAll('"', '""')}"';
-
-  Future<void> _copyProcessingCsv() async {
-    final processing = demoOms.withdrawals.where(
-      (request) => request.status == DemoWithdrawalStatus.processing,
-    );
-    final rows = <String>['reference,amount,method,account,reseller'];
-    for (final request in processing) {
-      rows.add(
-        [
-          request.id,
-          request.amount.toString(),
-          request.method,
-          request.account,
-          request.reseller.name,
-        ].map(_escapeCsv).join(','),
-      );
-    }
-    try {
-      await Clipboard.setData(ClipboardData(text: rows.join('\n')));
-      if (!mounted) return;
-      widget.onMessage(
-        'Processing-request CSV copied to clipboard. No payments were sent.',
-      );
-    } on PlatformException catch (error) {
-      if (mounted) {
-        widget.onMessage(
-          'Could not copy the CSV: ${error.message ?? error.code}',
-        );
-      }
-    }
-  }
-
-  Future<void> _pasteResults() async {
-    final input = TextEditingController();
-    try {
-      final content = await showDialog<String>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Upload disbursement result'),
-          content: SizedBox(
-            width: 460,
-            child: TextField(
-              controller: input,
-              minLines: 5,
-              maxLines: 10,
-              decoration: const InputDecoration(
-                hintText: 'reference,status\\nWD-5001,approved',
-                helperText: 'Paste result CSV rows: withdrawal reference, approved or cancelled',
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, input.text),
-              child: const Text('Validate & record demo result'),
-            ),
-          ],
-        ),
-      );
-      if (!mounted || content == null) return;
-      final parsed = <(DemoWithdrawal, bool)>[];
-      final seen = <String>{};
-      final issues = <String>[];
-      for (final line in content.split(RegExp(r'\r?\n'))) {
-        final trimmed = line.trim();
-        if (trimmed.isEmpty || trimmed.toLowerCase().startsWith('reference,')) {
-          continue;
-        }
-        final columns = trimmed
-            .split(',')
-            .map((value) => value.trim())
-            .toList();
-        if (columns.length != 2 || !seen.add(columns[0])) {
-          issues.add('Malformed or duplicate row: $trimmed');
-          continue;
-        }
-        DemoWithdrawal? request;
-        for (final candidate in demoOms.withdrawals) {
-          if (candidate.id == columns[0]) {
-            request = candidate;
-            break;
-          }
-        }
-        if (request == null ||
-            request.status != DemoWithdrawalStatus.processing) {
-          issues.add('Unknown or non-processing request: ${columns[0]}');
-          continue;
-        }
-        final status = columns[1].toLowerCase();
-        if (status != 'approved' && status != 'cancelled') {
-          issues.add('Unsupported result for ${columns[0]}: ${columns[1]}');
-          continue;
-        }
-        parsed.add((request, status == 'approved'));
-      }
-      if (issues.isNotEmpty || parsed.isEmpty) {
-        widget.onMessage(
-          issues.isEmpty
-              ? 'No valid result rows were provided.'
-              : issues.take(2).join(' • '),
-        );
-        return;
-      }
-      for (final result in parsed) {
-        demoOms.applyDemoDisbursementResult(result.$1, approved: result.$2);
-      }
-      setState(() {});
-      widget.onMessage(
-        'Recorded ${parsed.length} demo result(s) only. Provider transactions were not verified.',
-      );
-    } finally {
-      input.dispose();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final processing = demoOms.withdrawals
-        .where((request) => request.status == DemoWithdrawalStatus.processing)
-        .length;
-    final approved = demoOms.withdrawals
-        .where((request) => request.status == DemoWithdrawalStatus.approved)
-        .length;
-    final cancelled = demoOms.withdrawals
-        .where((request) => request.status == DemoWithdrawalStatus.cancelled)
-        .length;
-    return PageBody(
-      children: [
+        const SizedBox(height: 18),
         const SectionTitle('Disbursement', icon: Icons.account_balance_rounded),
-        const Panel(
-          child: Text(
-            'DEMO ONLY • This workspace does not connect to a payment provider. CSV export and pasted results are local test data, not proof of a real transfer.',
-            style: TextStyle(color: orange, height: 1.45),
-          ),
-        ),
-        const SizedBox(height: 12),
         Panel(
           child: Column(
             children: [
@@ -3811,29 +4385,40 @@ class _AdminDisbursementState extends State<AdminDisbursement> {
                 title: 'External Disbursement',
                 detail: 'Requires a verified payment-provider integration',
                 onTap: () => widget.onMessage(
-                  'No payment provider is connected; disbursement cannot be made from this demo.',
+                  'No payment provider is connected; disbursement cannot be made.',
                 ),
               ),
               const Divider(height: 1, color: line),
               _AdminActionRow(
                 icon: Icons.upload_file_rounded,
                 title: 'Paste result CSV',
-                detail: 'Validate and record demo-only results',
+                detail: 'Validate and record processing results',
                 onTap: _pasteResults,
               ),
             ],
           ),
         ),
-        const SizedBox(height: 17),
-        const SectionTitle('Disbursement Result'),
+        const SizedBox(height: 14),
         Panel(
           child: Column(
             children: [
-              KeyValueRow('Processing', '$processing', valueColor: blue),
+              KeyValueRow(
+                'Processing',
+                '${demoOms.withdrawals.where((item) => item.status == DemoWithdrawalStatus.processing).length}',
+                valueColor: blue,
+              ),
               const Divider(height: 1, color: line),
-              KeyValueRow('Approved', '$approved', valueColor: green),
+              KeyValueRow(
+                'Approved',
+                '${demoOms.withdrawals.where((item) => item.status == DemoWithdrawalStatus.approved).length}',
+                valueColor: green,
+              ),
               const Divider(height: 1, color: line),
-              KeyValueRow('Cancelled', '$cancelled', valueColor: red),
+              KeyValueRow(
+                'Cancelled',
+                '${demoOms.withdrawals.where((item) => item.status == DemoWithdrawalStatus.cancelled).length}',
+                valueColor: red,
+              ),
               const Divider(height: 1, color: line),
               const KeyValueRow(
                 'Duplicate protected',
@@ -3862,13 +4447,16 @@ class _AdminActionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(icon, color: brand),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-      subtitle: Text(detail),
-      trailing: const Icon(Icons.chevron_right_rounded),
-      onTap: onTap,
+    return Material(
+      color: Colors.white,
+      child: ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: Icon(icon, color: brand),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+        subtitle: Text(detail),
+        trailing: const Icon(Icons.chevron_right_rounded),
+        onTap: onTap,
+      ),
     );
   }
 }
@@ -3881,29 +4469,23 @@ class AdminWallet extends StatelessWidget {
     final withdrawn = demoOms.withdrawals
         .where((request) => request.status == DemoWithdrawalStatus.approved)
         .fold(0, (total, request) => total + request.amount);
+    final payment = demoOms.resellerCapital + demoOms.resellerProfit;
     return PageBody(
       children: [
         MetricCard(
-          label: 'Capital Credited',
-          value: '৳${demoOms.resellerCapital}',
+          label: 'Payment',
+          value: '৳$payment',
           color: blue,
           icon: Icons.south_rounded,
         ),
-        SizedBox(height: 12),
+        const SizedBox(height: 12),
         MetricCard(
-          label: 'Profit Credited',
-          value: '৳${demoOms.resellerProfit}',
-          color: green,
-          icon: Icons.trending_up_rounded,
-        ),
-        SizedBox(height: 12),
-        MetricCard(
-          label: 'Approved Withdrawals',
+          label: 'Withdraw',
           value: '৳$withdrawn',
           color: red,
           icon: Icons.north_rounded,
         ),
-        SizedBox(height: 12),
+        const SizedBox(height: 12),
         MetricCard(
           label: 'Current Balance',
           value: '৳${demoOms.totalWalletBalance}',
@@ -3971,13 +4553,48 @@ class _AdminSettingsState extends State<AdminSettings> {
     super.dispose();
   }
 
+  Future<void> _confirmSystemReset() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reset system data?'),
+        content: const Text(
+          'This clears all data currently held in this app and restores the initial customers, products, resellers, batches, wallet transactions, and settings. Server data is not connected or affected.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Reset System'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    demoOms.resetSystem();
+    target.text = '${demoOms.settings.initialBatchTarget}';
+    cycle.text = '${demoOms.settings.cycleHours}';
+    transfer.text = '${demoOms.settings.transferHours}';
+    setState(() {
+      enabled = demoOms.settings.systemEnabled;
+      profit = '${demoOms.settings.profitRate}%';
+      growth = '${demoOms.settings.growthRate}%';
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('System data and settings were reset.')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final nextTarget =
-        (demoOms.currentBatchTarget *
-                (100 + int.parse(growth.replaceAll('%', ''))) /
-                100)
-            .round();
+    final nextTarget = DemoOmsStore.calculateNextBatchTarget(
+      demoOms.currentBatchTarget,
+      int.parse(growth.replaceAll('%', '')),
+    );
     return PageBody(
       children: [
         Panel(
@@ -3988,13 +4605,16 @@ class _AdminSettingsState extends State<AdminSettings> {
                 'System Settings',
                 icon: Icons.settings_rounded,
               ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('System Status'),
-                subtitle: Text(enabled ? 'System is ON' : 'System is OFF'),
-                value: enabled,
-                activeThumbColor: brand,
-                onChanged: (value) => setState(() => enabled = value),
+              Material(
+                color: Colors.white,
+                child: SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('System Status'),
+                  subtitle: Text(enabled ? 'System is ON' : 'System is OFF'),
+                  value: enabled,
+                  activeThumbColor: brand,
+                  onChanged: (value) => setState(() => enabled = value),
+                ),
               ),
               DropdownButtonFormField<String>(
                 initialValue: profit,
@@ -4054,6 +4674,7 @@ class _AdminSettingsState extends State<AdminSettings> {
                   final transferHours = int.tryParse(transfer.text.trim());
                   if (targetAmount == null ||
                       targetAmount <= 0 ||
+                      targetAmount % 50 != 0 ||
                       cycleHours == null ||
                       cycleHours <= 0 ||
                       transferHours == null ||
@@ -4061,7 +4682,7 @@ class _AdminSettingsState extends State<AdminSettings> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text(
-                          'Enter positive whole-number amounts and hours.',
+                          'Enter a positive batch target in ৳50 multiples and positive whole-number hours.',
                         ),
                       ),
                     );
@@ -4101,6 +4722,18 @@ class _AdminSettingsState extends State<AdminSettings> {
                   );
                   setState(() {});
                 },
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _confirmSystemReset,
+                  icon: const Icon(Icons.restart_alt_rounded, color: red),
+                  label: const Text(
+                    'Reset System',
+                    style: TextStyle(color: red),
+                  ),
+                ),
               ),
             ],
           ),

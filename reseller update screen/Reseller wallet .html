@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wallet Dashboard</title>
+
+<!-- FontAwesome Icons CDN -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+:root {
+    --primary: #6366f1;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --processing: #3b82f6;
+    --danger: #ef4444;
+    --bg-color: #f8fafc;
+    --card-bg: #ffffff;
+    --text-main: #1e293b;
+    --text-muted: #64748b;
+    --border-color: #e2e8f0;
+}
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body{
+    background: var(--bg-color);
+    color: var(--text-main);
+    padding-bottom: 90px;
+}
+
+/* Header */
+.header{
+    background: var(--card-bg);
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header i {
+    font-size: 20px;
+    color: var(--primary);
+}
+
+.header h2{
+    font-size: 20px;
+    font-weight: 700;
+}
+
+/* Container */
+.container{
+    max-width: 900px;
+    margin: auto;
+    padding: 20px;
+}
+
+/* Balance Cards */
+.balance-grid{
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.balance-card{
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 22px 20px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s;
+}
+
+.balance-card:hover {
+    transform: translateY(-2px);
+}
+
+.balance-card .icon-float {
+    position: absolute;
+    right: 15px;
+    top: 20px;
+    font-size: 28px;
+    opacity: 0.1;
+}
+
+.balance-card .label{
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.balance-card .amount{
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.capital{
+    color: #2563eb;
+}
+
+.profit{
+    color: var(--success);
+}
+
+.available{
+    color: #7c3aed;
+}
+
+/* Section */
+.section{
+    margin-top: 15px;
+}
+
+.section-title{
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.section-title i {
+    color: var(--primary);
+}
+
+/* Transaction */
+.transaction{
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 18px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    transition: all 0.2s;
+}
+
+.transaction:hover {
+    border-color: #cbd5e1;
+}
+
+.transaction-top{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.transaction-type{
+    font-size: 15px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.transaction-amount{
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.payment{
+    color: var(--danger);
+}
+
+.withdraw{
+    color: #2563eb;
+}
+
+.transaction-info{
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    background: #f8fafc;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+}
+
+.info-box{
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.info-box strong{
+    display: block;
+    color: var(--text-main);
+    margin-top: 3px;
+    font-size: 13px;
+}
+
+/* Status */
+.status{
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.status.completed{
+    background: #d1fae5;
+    color: #059669;
+}
+
+.status.pending{
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.status.processing{
+    background: #e0f2fe;
+    color: #0284c7;
+}
+
+.status.cancelled{
+    background: #fee2e2;
+    color: var(--danger);
+}
+
+/* Bottom Navigation */
+.bottom-nav{
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 70px;
+    background: var(--card-bg);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    z-index: 100;
+    box-shadow: 0 -4px 6px -1px rgba(0,0,0,0.02);
+}
+
+.bottom-nav a{
+    text-decoration: none;
+    color: var(--text-muted);
+    font-size: 11px;
+    text-align: center;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+.bottom-nav a.active{
+    color: var(--primary);
+    font-weight: 700;
+}
+
+.bottom-nav .icon{
+    display: block;
+    font-size: 18px;
+    margin-bottom: 4px;
+}
+
+/* Mobile */
+@media(max-width: 650px){
+    .container{
+        padding: 15px;
+    }
+
+    .balance-grid{
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .balance-card .amount{
+        font-size: 20px;
+    }
+
+    .transaction-info{
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<!-- Header -->
+<div class="header">
+    <i class="fa-solid fa-wallet"></i>
+    <h2>Wallet</h2>
+</div>
+
+<div class="container">
+
+    <!-- Balance -->
+    <div class="balance-grid">
+
+        <div class="balance-card">
+            <i class="fa-solid fa-vault icon-float"></i>
+            <div class="label">Capital</div>
+            <div class="amount capital">৳10,000</div>
+        </div>
+
+        <div class="balance-card">
+            <i class="fa-solid fa-chart-line icon-float"></i>
+            <div class="label">Profit</div>
+            <div class="amount profit">৳2,500</div>
+        </div>
+
+        <div class="balance-card">
+            <i class="fa-solid fa-credit-card icon-float"></i>
+            <div class="label">Available Balance</div>
+            <div class="amount available">৳12,500</div>
+        </div>
+
+    </div>
+
+
+    <!-- Transaction History -->
+    <div class="section">
+
+        <div class="section-title">
+            <i class="fa-solid fa-clock-rotate-left"></i> Transaction History
+        </div>
+
+
+        <!-- Payment Transaction -->
+        <div class="transaction">
+
+            <div class="transaction-top">
+                <div class="transaction-type payment">
+                    <i class="fa-solid fa-arrow-trend-down"></i> Payment
+                </div>
+                <div class="transaction-amount payment">
+                    -৳500
+                </div>
+            </div>
+
+            <div class="transaction-info">
+                <div class="info-box">
+                    Transaction ID
+                    <strong>TXN-10025</strong>
+                </div>
+                <div class="info-box">
+                    Date
+                    <strong>03 Sep 2026, 10:30 AM</strong>
+                </div>
+                <div class="info-box">
+                    Status
+                    <strong>
+                        <span class="status completed">Completed</span>
+                    </strong>
+                </div>
+            </div>
+
+        </div>
+
+
+        <!-- Withdraw Transaction -->
+        <div class="transaction">
+
+            <div class="transaction-top">
+                <div class="transaction-type withdraw">
+                    <i class="fa-solid fa-money-bill-transfer"></i> Withdraw
+                </div>
+                <div class="transaction-amount withdraw">
+                    -৳2,000
+                </div>
+            </div>
+
+            <div class="transaction-info">
+                <div class="info-box">
+                    Transaction ID
+                    <strong>WD-10018</strong>
+                </div>
+                <div class="info-box">
+                    Date
+                    <strong>02 Sep 2026, 08:15 PM</strong>
+                </div>
+                <div class="info-box">
+                    Status
+                    <strong>
+                        <span class="status pending">Pending</span>
+                    </strong>
+                </div>
+            </div>
+
+        </div>
+
+
+        <!-- Payment Transaction -->
+        <div class="transaction">
+
+            <div class="transaction-top">
+                <div class="transaction-type payment">
+                    <i class="fa-solid fa-arrow-trend-down"></i> Payment
+                </div>
+                <div class="transaction-amount payment">
+                    -৳800
+                </div>
+            </div>
+
+            <div class="transaction-info">
+                <div class="info-box">
+                    Transaction ID
+                    <strong>TXN-10021</strong>
+                </div>
+                <div class="info-box">
+                    Date
+                    <strong>01 Sep 2026, 03:45 PM</strong>
+                </div>
+                <div class="info-box">
+                    Status
+                    <strong>
+                        <span class="status completed">Completed</span>
+                    </strong>
+                </div>
+            </div>
+
+        </div>
+
+
+        <!-- Withdraw Transaction -->
+        <div class="transaction">
+
+            <div class="transaction-top">
+                <div class="transaction-type withdraw">
+                    <i class="fa-solid fa-money-bill-transfer"></i> Withdraw
+                </div>
+                <div class="transaction-amount withdraw">
+                    -৳1,500
+                </div>
+            </div>
+
+            <div class="transaction-info">
+                <div class="info-box">
+                    Transaction ID
+                    <strong>WD-10012</strong>
+                </div>
+                <div class="info-box">
+                    Date
+                    <strong>30 Aug 2026, 06:20 PM</strong>
+                </div>
+                <div class="info-box">
+                    Status
+                    <strong>
+                        <span class="status processing">Processing</span>
+                    </strong>
+                </div>
+            </div>
+
+        </div>
+
+
+    </div>
+
+</div>
+
+<!-- Bottom Navigation -->
+<div class="bottom-nav">
+    <a href="index.html">
+        <span class="icon"><i class="fa-solid fa-house"></i></span>
+        Home
+    </a>
+
+    <a href="order.html">
+        <span class="icon"><i class="fa-solid fa-box"></i></span>
+        Orders
+    </a>
+
+    <a href="wallet.html" class="active">
+        <span class="icon"><i class="fa-solid fa-wallet"></i></span>
+        Wallet
+    </a>
+
+    <a href="withdraw.html">
+        <span class="icon"><i class="fa-solid fa-money-bill-transfer"></i></span>
+        Withdraw
+    </a>
+
+    <a href="catalog.html">
+        <span class="icon"><i class="fa-solid fa-store"></i></span>
+        Catalog
+    </a>
+</div>
+
+</body>
+</html>

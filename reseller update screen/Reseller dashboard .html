@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reseller Dashboard</title>
+
+<!-- FontAwesome Icons CDN -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+:root {
+    --primary: #6366f1;
+    --primary-dark: #4f46e5;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --processing: #3b82f6;
+    --danger: #ef4444;
+    --bg-color: #f8fafc;
+    --card-bg: #ffffff;
+    --text-main: #1e293b;
+    --text-muted: #64748b;
+    --border-color: #e2e8f0;
+}
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body{
+    background: var(--bg-color);
+    color: var(--text-main);
+    padding-bottom: 90px;
+}
+
+/* =========================
+   HEADER
+========================= */
+.header{
+    height: 70px;
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header h2{
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.icon-btn{
+    width: 42px;
+    height: 42px;
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    background: var(--card-bg);
+    color: var(--text-main);
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.icon-btn:hover {
+    background: #f1f5f9;
+}
+
+/* =========================
+   CONTAINER
+========================= */
+.container{
+    max-width: 1000px;
+    margin: auto;
+    padding: 20px;
+}
+
+/* =========================
+   WELCOME COVER
+========================= */
+.welcome{
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+    color: #fff;
+    border-radius: 20px;
+    padding: 25px 22px;
+    margin-bottom: 24px;
+    box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.3);
+}
+
+.welcome small{
+    font-size: 13px;
+    opacity: 0.9;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.welcome h1{
+    font-size: 24px;
+    margin: 6px 0;
+    font-weight: 700;
+}
+
+.welcome p{
+    font-size: 13px;
+    opacity: 0.9;
+}
+
+/* =========================
+   SECTION TITLE
+========================= */
+.section-title{
+    font-size: 17px;
+    font-weight: 700;
+    margin: 24px 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* =========================
+   STATISTICS
+========================= */
+.stat-grid{
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+}
+
+.stat-card{
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 16px 14px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    transition: transform 0.2s;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+}
+
+.stat-label{
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.stat-value{
+    font-size: 20px;
+    font-weight: 700;
+}
+
+/* Status Colors */
+.total { color: var(--primary); }
+.pending { color: var(--warning); }
+.processing { color: var(--processing); }
+.completed { color: var(--success); }
+.cancelled { color: var(--danger); }
+
+/* =========================
+   PAYMENT / WITHDRAWAL GRIDS
+========================= */
+.payment-grid{
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.withdraw-grid{
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+}
+
+/* =========================
+   RECENT LIST
+========================= */
+.recent-card{
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.recent-top{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.recent-title{
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.recent-status{
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+    background: #eef2ff;
+    color: var(--primary);
+}
+
+.recent-info{
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.recent-date{
+    font-size: 11px;
+    color: #94a3b8;
+    margin-top: 6px;
+}
+
+/* =========================
+   QUICK ACTION
+========================= */
+.quick-grid{
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.quick-btn{
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 20px 10px;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    transition: all 0.2s;
+}
+
+.quick-btn:hover {
+    border-color: var(--primary);
+    background: #f8fafc;
+}
+
+.quick-icon{
+    font-size: 20px;
+    color: var(--primary);
+    margin-bottom: 8px;
+}
+
+.quick-btn strong{
+    display: block;
+    font-size: 13px;
+    color: var(--text-main);
+}
+
+/* =========================
+   BOTTOM NAV
+========================= */
+.bottom-nav{
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 70px;
+    background: var(--card-bg);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    z-index: 100;
+    box-shadow: 0 -4px 6px -1px rgba(0,0,0,0.03);
+}
+
+.nav-item{
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 11px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+.nav-icon{
+    font-size: 18px;
+    margin-bottom: 4px;
+}
+
+.nav-item.active{
+    color: var(--primary);
+    font-weight: 700;
+}
+
+/* =========================
+   RESPONSIVE DESIGN
+========================= */
+@media(max-width: 900px){
+    .stat-grid{
+        grid-template-columns: repeat(3, 1fr);
+    }
+    .withdraw-grid{
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media(max-width: 600px){
+    .container{
+        padding: 15px;
+    }
+    .stat-grid{
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .payment-grid{
+        grid-template-columns: 1fr;
+    }
+    .withdraw-grid{
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .quick-grid{
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+    }
+    .quick-btn{
+        padding: 15px 5px;
+    }
+}
+
+@media(max-width: 400px){
+    .withdraw-grid{
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .stat-grid{
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+</style>
+</head>
+
+<body>
+
+<!-- =========================
+     HEADER
+========================= -->
+<header class="header">
+    <button class="icon-btn" onclick="openProfile()">
+        <i class="fa-solid fa-user"></i>
+    </button>
+    <h2>Dashboard</h2>
+    <button class="icon-btn" onclick="openNotifications()">
+        <i class="fa-solid fa-bell"></i>
+    </button>
+</header>
+
+<main class="container">
+
+<!-- =========================
+     WELCOME COVER
+========================= -->
+<section class="welcome">
+    <small>Welcome Back</small>
+    <h1>Hello, Reseller!</h1>
+    <p>Manage your orders and business activities easily.</p>
+</section>
+
+<!-- =========================
+     ORDER OVERVIEW
+========================= -->
+<div class="section-title">
+    <i class="fa-solid fa-clipboard-list text-primary"></i> Order Overview
+</div>
+
+<div class="stat-grid">
+    <div class="stat-card">
+        <div class="stat-label">Total Order</div>
+        <div class="stat-value total">24</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Pending</div>
+        <div class="stat-value pending">5</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Processing</div>
+        <div class="stat-value processing">6</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Completed</div>
+        <div class="stat-value completed">10</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Cancelled</div>
+        <div class="stat-value cancelled">3</div>
+    </div>
+</div>
+
+<!-- =========================
+     PAYMENT OVERVIEW
+========================= -->
+<div class="section-title">
+    <i class="fa-solid fa-wallet text-primary"></i> Payment Overview
+</div>
+
+<div class="payment-grid">
+    <div class="stat-card">
+        <div class="stat-label">Total Payment</div>
+        <div class="stat-value total">24</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Paid</div>
+        <div class="stat-value completed">19</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Unpaid</div>
+        <div class="stat-value pending">5</div>
+    </div>
+</div>
+
+<!-- =========================
+     WITHDRAWAL OVERVIEW
+========================= -->
+<div class="section-title">
+    <i class="fa-solid fa-money-bill-transfer text-primary"></i> Withdrawal Overview
+</div>
+
+<div class="withdraw-grid">
+    <div class="stat-card">
+        <div class="stat-label">Total Withdraw</div>
+        <div class="stat-value total">12</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Pending</div>
+        <div class="stat-value pending">3</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Processing</div>
+        <div class="stat-value processing">2</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Approved</div>
+        <div class="stat-value completed">6</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Cancelled</div>
+        <div class="stat-value cancelled">1</div>
+    </div>
+</div>
+
+<!-- =========================
+     RECENT ORDER
+========================= -->
+<div class="section-title">
+    <i class="fa-solid fa-box text-primary"></i> Recent Order
+</div>
+
+<div class="recent-card">
+    <div class="recent-top">
+        <div class="recent-title">ORDER-1028</div>
+        <div class="recent-status" style="background:#fef3c7; color:#d97706;">Pending</div>
+    </div>
+    <div class="recent-info">Type-C Fast Charging Cable</div>
+    <div class="recent-date">03 Sep 2026</div>
+</div>
+
+<div class="recent-card">
+    <div class="recent-top">
+        <div class="recent-title">ORDER-1027</div>
+        <div class="recent-status" style="background:#e0f2fe; color:#0284c7;">Processing</div>
+    </div>
+    <div class="recent-info">Premium Cotton T-Shirt</div>
+    <div class="recent-date">02 Sep 2026</div>
+</div>
+
+<!-- =========================
+     RECENT PAYMENT
+========================= -->
+<div class="section-title">
+    <i class="fa-solid fa-receipt text-primary"></i> Recent Payment
+</div>
+
+<div class="recent-card">
+    <div class="recent-top">
+        <div class="recent-title">Payment</div>
+        <div class="recent-status" style="background:#d1fae5; color:#059669;">Paid</div>
+    </div>
+    <div class="recent-info">ORDER-1026</div>
+    <div class="recent-date">03 Sep 2026</div>
+</div>
+
+<div class="recent-card">
+    <div class="recent-top">
+        <div class="recent-title">Payment</div>
+        <div class="recent-status" style="background:#d1fae5; color:#059669;">Paid</div>
+    </div>
+    <div class="recent-info">ORDER-1024</div>
+    <div class="recent-date">02 Sep 2026</div>
+</div>
+
+<!-- =========================
+     RECENT WITHDRAW
+========================= -->
+<div class="section-title">
+    <i class="fa-solid fa-hand-holding-dollar text-primary"></i> Recent Withdraw
+</div>
+
+<div class="recent-card">
+    <div class="recent-top">
+        <div class="recent-title">WD-10025</div>
+        <div class="recent-status" style="background:#fef3c7; color:#d97706;">Pending</div>
+    </div>
+    <div class="recent-info">bKash • Account: 01******789</div>
+    <div class="recent-date">03 Sep 2026</div>
+</div>
+
+<div class="recent-card">
+    <div class="recent-top">
+        <div class="recent-title">WD-10021</div>
+        <div class="recent-status" style="background:#d1fae5; color:#059669;">Approved</div>
+    </div>
+    <div class="recent-info">Nagad • Account: 01******456</div>
+    <div class="recent-date">02 Sep 2026</div>
+</div>
+
+<!-- =========================
+     QUICK ACTION
+========================= -->
+<div class="section-title">
+    <i class="fa-solid fa-bolt text-primary"></i> Quick Action
+</div>
+
+<div class="quick-grid">
+    <div class="quick-btn" onclick="goTo('order.html')">
+        <div class="quick-icon"><i class="fa-solid fa-box-open"></i></div>
+        <strong>View Orders</strong>
+    </div>
+    <div class="quick-btn" onclick="goTo('order.html')">
+        <div class="quick-icon"><i class="fa-solid fa-credit-card"></i></div>
+        <strong>Pay & Confirm</strong>
+    </div>
+    <div class="quick-btn" onclick="goTo('withdraw.html')">
+        <div class="quick-icon"><i class="fa-solid fa-money-bill-wave"></i></div>
+        <strong>Withdraw</strong>
+    </div>
+</div>
+
+</main>
+
+<!-- =========================
+     BOTTOM NAVIGATION
+========================= -->
+<nav class="bottom-nav">
+    <div class="nav-item active" onclick="goTo('index.html')">
+        <div class="nav-icon"><i class="fa-solid fa-house"></i></div>
+        Home
+    </div>
+    <div class="nav-item" onclick="goTo('order.html')">
+        <div class="nav-icon"><i class="fa-solid fa-box"></i></div>
+        Orders
+    </div>
+    <div class="nav-item" onclick="goTo('wallet.html')">
+        <div class="nav-icon"><i class="fa-solid fa-wallet"></i></div>
+        Wallet
+    </div>
+    <div class="nav-item" onclick="goTo('withdraw.html')">
+        <div class="nav-icon"><i class="fa-solid fa-money-bill-transfer"></i></div>
+        Withdraw
+    </div>
+    <div class="nav-item" onclick="goTo('catalog.html')">
+        <div class="nav-icon"><i class="fa-solid fa-store"></i></div>
+        Catalog
+    </div>
+</nav>
+
+<script>
+function openProfile(){
+    window.location.href = "profile.html";
+}
+
+function openNotifications(){
+    window.location.href = "notifications.html";
+}
+
+function goTo(page){
+    window.location.href = page;
+}
+</script>
+
+</body>
+</html>

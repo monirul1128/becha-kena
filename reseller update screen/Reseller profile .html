@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reseller Profile</title>
+
+<!-- Google Font: Inter -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- FontAwesome Icons CDN -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+:root {
+    --primary: #6366f1;
+    --primary-dark: #4f46e5;
+    --primary-light: #e0e7ff;
+    --bg-color: #f1f5f9;
+    --card-bg: #ffffff;
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --border-color: #cbd5e1;
+    --success: #10b981;
+    --danger: #ef4444;
+}
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:'Inter', sans-serif;
+}
+
+body{
+    background: var(--bg-color);
+    color: var(--text-main);
+    min-height:100vh;
+    padding-bottom:30px;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Header */
+.header{
+    height:64px;
+    background: var(--card-bg);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 18px;
+    border-bottom:1px solid var(--border-color);
+    position:sticky;
+    top:0;
+    z-index:100;
+}
+
+.header-title{
+    font-size:18px;
+    font-weight:700;
+}
+
+.back-btn{
+    border:none;
+    background: var(--bg-color);
+    width:40px;
+    height:40px;
+    border-radius:12px;
+    font-size:16px;
+    cursor:pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-main);
+    transition: background 0.2s;
+}
+
+.back-btn:hover {
+    background: var(--border-color);
+}
+
+.header-space{
+    width:40px;
+}
+
+/* Main */
+.container{
+    max-width:600px;
+    margin:25px auto;
+    padding:0 16px;
+}
+
+/* Profile Card */
+.profile-card{
+    background: var(--card-bg);
+    border-radius:22px;
+    padding:28px 20px;
+    text-align:center;
+    box-shadow:0 10px 30px -5px rgba(0,0,0,.06);
+    border: 1px solid var(--border-color);
+    margin-bottom:18px;
+}
+
+.profile-avatar{
+    width:85px;
+    height:85px;
+    border-radius:50%;
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    margin:0 auto 14px;
+    font-size:32px;
+    font-weight:700;
+    box-shadow: 0 8px 16px rgba(79, 70, 229, 0.3);
+}
+
+.profile-name{
+    font-size:20px;
+    font-weight:700;
+    margin-bottom:4px;
+}
+
+.profile-id{
+    color: var(--text-muted);
+    font-size:13px;
+    margin-bottom:15px;
+    font-weight: 500;
+}
+
+.account-status{
+    display:inline-block;
+    padding:6px 14px;
+    border-radius:20px;
+    background:#dcfce7;
+    color:#15803d;
+    font-size:12px;
+    font-weight:700;
+}
+
+/* Information */
+.section{
+    background: var(--card-bg);
+    border-radius:22px;
+    padding:24px;
+    margin-bottom:18px;
+    box-shadow:0 10px 30px -5px rgba(0,0,0,.06);
+    border: 1px solid var(--border-color);
+}
+
+.section-title{
+    font-size:16px;
+    font-weight:700;
+    margin-bottom:16px;
+}
+
+.info-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:12px 0;
+    border-bottom:1px solid var(--border-color);
+    gap:15px;
+}
+
+.info-row:last-child{
+    border-bottom:none;
+}
+
+.info-label{
+    color: var(--text-muted);
+    font-size:13px;
+    font-weight: 600;
+}
+
+.info-value{
+    font-size:14px;
+    font-weight:600;
+    text-align:right;
+    word-break:break-word;
+}
+
+/* Menu */
+.menu-section{
+    background: var(--card-bg);
+    border-radius:22px;
+    overflow:hidden;
+    box-shadow:0 10px 30px -5px rgba(0,0,0,.06);
+    border: 1px solid var(--border-color);
+}
+
+.menu-item{
+    width:100%;
+    display:flex;
+    align-items:center;
+    padding:16px 20px;
+    border:none;
+    border-bottom:1px solid var(--border-color);
+    background: var(--card-bg);
+    cursor:pointer;
+    text-align:left;
+    transition: background 0.2s;
+}
+
+.menu-item:hover {
+    background: #f8fafc;
+}
+
+.menu-item:last-child{
+    border-bottom:none;
+}
+
+.menu-icon{
+    width:42px;
+    height:42px;
+    border-radius:12px;
+    background: var(--primary-light);
+    color: var(--primary);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:18px;
+    margin-right:15px;
+}
+
+.menu-content{
+    flex:1;
+}
+
+.menu-title{
+    font-size:14px;
+    font-weight:700;
+    color: var(--text-main);
+    margin-bottom:2px;
+}
+
+.menu-description{
+    font-size:12px;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.menu-arrow{
+    font-size:16px;
+    color: var(--text-muted);
+}
+
+/* Logout */
+.logout-item .menu-title{
+    color: var(--danger);
+}
+
+.logout-item .menu-icon{
+    background:#fee2e2;
+    color: var(--danger);
+}
+
+/* Modal */
+.modal{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.55);
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    z-index:999;
+    backdrop-filter: blur(4px);
+}
+
+.modal-box{
+    width:100%;
+    max-width:380px;
+    background: var(--card-bg);
+    border-radius:22px;
+    padding:28px;
+    text-align:center;
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+}
+
+.modal-icon{
+    width:56px;
+    height:56px;
+    margin:0 auto 16px;
+    border-radius:50%;
+    background:#fee2e2;
+    color: var(--danger);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:22px;
+}
+
+.modal-title{
+    font-size:18px;
+    font-weight:700;
+    margin-bottom:8px;
+}
+
+.modal-text{
+    color: var(--text-muted);
+    font-size:13px;
+    line-height:1.5;
+    margin-bottom:22px;
+    font-weight: 500;
+}
+
+.modal-actions{
+    display:flex;
+    gap:10px;
+}
+
+.modal-btn{
+    flex:1;
+    height:46px;
+    border:none;
+    border-radius:12px;
+    font-weight:700;
+    font-size:14px;
+    cursor:pointer;
+    transition: all 0.2s;
+}
+
+.cancel-btn{
+    background: var(--bg-color);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+}
+
+.cancel-btn:hover {
+    background: var(--border-color);
+}
+
+.confirm-logout{
+    background: var(--danger);
+    color:#fff;
+}
+
+.confirm-logout:hover {
+    background: #dc2626;
+}
+
+/* Responsive */
+@media(max-width:480px){
+    .container{
+        margin-top:16px;
+        padding: 0 12px;
+    }
+    .profile-card, .section, .modal-box{
+        padding:20px;
+        border-radius:18px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<!-- Header -->
+<header class="header">
+    <button class="back-btn" onclick="goBack()">
+        <i class="fa-solid fa-arrow-left"></i>
+    </button>
+    <div class="header-title">Reseller Profile</div>
+    <div class="header-space"></div>
+</header>
+
+<main class="container">
+
+    <!-- Profile Card -->
+    <section class="profile-card">
+        <div class="profile-avatar" id="avatar">R</div>
+        <div class="profile-name" id="resellerName">Reseller Name</div>
+        <div class="profile-id">Reseller ID: <span id="resellerId">RSL-10001</span></div>
+        <span class="account-status">Active</span>
+    </section>
+
+    <!-- Account Information -->
+    <section class="section">
+        <div class="section-title">Account Information</div>
+
+        <div class="info-row">
+            <span class="info-label">Full Name</span>
+            <span class="info-value" id="fullName">Reseller Name</span>
+        </div>
+
+        <div class="info-row">
+            <span class="info-label">Mobile Number</span>
+            <span class="info-value" id="mobile">01**********</span>
+        </div>
+
+        <div class="info-row">
+            <span class="info-label">Email Address</span>
+            <span class="info-value" id="email">reseller@example.com</span>
+        </div>
+
+        <div class="info-row">
+            <span class="info-label">Account Status</span>
+            <span class="info-value" style="color: var(--success);">Active</span>
+        </div>
+    </section>
+
+    <!-- Profile Menu -->
+    <section class="menu-section">
+        <button class="menu-item" onclick="openSettings()">
+            <div class="menu-icon">
+                <i class="fa-solid fa-gear"></i>
+            </div>
+            <div class="menu-content">
+                <div class="menu-title">Settings</div>
+                <div class="menu-description">Manage your account settings</div>
+            </div>
+            <div class="menu-arrow">
+                <i class="fa-solid fa-chevron-right"></i>
+            </div>
+        </button>
+
+        <button class="menu-item" onclick="shareProfile()">
+            <div class="menu-icon">
+                <i class="fa-solid fa-share-nodes"></i>
+            </div>
+            <div class="menu-content">
+                <div class="menu-title">Share Platform</div>
+                <div class="menu-description">Share this application with others</div>
+            </div>
+            <div class="menu-arrow">
+                <i class="fa-solid fa-chevron-right"></i>
+            </div>
+        </button>
+
+        <button class="menu-item logout-item" onclick="openLogoutModal()">
+            <div class="menu-icon">
+                <i class="fa-solid fa-right-from-bracket"></i>
+            </div>
+            <div class="menu-content">
+                <div class="menu-title">Logout</div>
+                <div class="menu-description">Sign out from your account</div>
+            </div>
+            <div class="menu-arrow">
+                <i class="fa-solid fa-chevron-right"></i>
+            </div>
+        </button>
+    </section>
+
+</main>
+
+<!-- Logout Confirmation Modal -->
+<div class="modal" id="logoutModal">
+    <div class="modal-box">
+        <div class="modal-icon">
+            <i class="fa-solid fa-right-from-bracket"></i>
+        </div>
+        <div class="modal-title">Logout?</div>
+        <div class="modal-text">Are you sure you want to logout from your reseller account?</div>
+        <div class="modal-actions">
+            <button class="modal-btn cancel-btn" onclick="closeLogoutModal()">Cancel</button>
+            <button class="modal-btn confirm-logout" onclick="logoutReseller()">Logout</button>
+        </div>
+    </div>
+</div>
+
+<script>
+/* Back */
+function goBack(){
+    window.history.back();
+}
+
+/* Settings */
+function openSettings(){
+    window.location.href = "settings.html";
+}
+
+/* Share */
+async function shareProfile(){
+    const shareData = {
+        title: "Reseller Platform",
+        text: "Join our reseller platform and start your business.",
+        url: window.location.origin
+    };
+
+    try{
+        if(navigator.share){
+            await navigator.share(shareData);
+        }else{
+            await navigator.clipboard.writeText(shareData.url);
+            alert("Share link copied to clipboard.");
+        }
+    }catch(error){
+        console.log("Share cancelled.");
+    }
+}
+
+/* Logout Modal */
+function openLogoutModal(){
+    document.getElementById("logoutModal").style.display = "flex";
+}
+
+function closeLogoutModal(){
+    document.getElementById("logoutModal").style.display = "none";
+}
+
+/* Logout */
+function logoutReseller(){
+    localStorage.removeItem("authToken");
+    sessionStorage.clear();
+    window.location.href = "login.html";
+}
+
+/* Close modal by clicking outside */
+document.getElementById("logoutModal").addEventListener("click", function(e){
+    if(e.target === this){
+        closeLogoutModal();
+    }
+});
+</script>
+
+</body>
+</html>

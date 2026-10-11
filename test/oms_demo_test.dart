@@ -1,3 +1,4 @@
+import 'package:excel/excel.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:bechakena_hub/oms_demo.dart';
@@ -31,6 +32,31 @@ void main() {
     );
   });
 
+  test('reads customer rows from an Excel workbook', () {
+    final workbook = Excel.createExcel();
+    final sheet = workbook.tables.values.first;
+    sheet.appendRow([
+      TextCellValue('name'),
+      TextCellValue('mobile_number'),
+      TextCellValue('address'),
+    ]);
+    sheet.appendRow([
+      TextCellValue('Rahim Uddin'),
+      TextCellValue('01700000000'),
+      TextCellValue('Mirpur, Dhaka'),
+    ]);
+
+    expect(parseExcelRows(workbook.encode()!), [
+      ['name', 'mobile_number', 'address'],
+      ['Rahim Uddin', '01700000000', 'Mirpur, Dhaka'],
+    ]);
+  });
+
+  test('rejects empty or invalid Excel files', () {
+    expect(() => parseExcelRows([]), throwsA(isA<FormatException>()));
+    expect(() => parseExcelRows([1, 2, 3]), throwsA(isA<UnsupportedError>()));
+  });
+
   group('DemoOmsStore', () {
     test('divides a target into available wholesale prices', () {
       expect(
@@ -41,6 +67,70 @@ void main() {
       expect(
         DemoOmsStore.divideTarget(700, [200, 300, 250]).reduce((a, b) => a + b),
         700,
+      );
+    });
+
+    test('calculates successive batch targets in nearest ৳50 units', () {
+      final store = DemoOmsStore();
+
+      expect(DemoOmsStore.calculateNextBatchTarget(500, 50), 750);
+      expect(DemoOmsStore.calculateNextBatchTarget(750, 50), 1150);
+
+      for (final order in store.orders.toList()) {
+        store.confirmPayment(order);
+      }
+      store.settleCurrentBatch();
+      expect(store.batches.last.previousTarget, 500);
+      expect(store.batches.last.target, 750);
+      expect(store.batches.last.growthRate, 50);
+
+      for (final order in store.orders.where(
+        (order) => order.batchId == store.currentBatchId,
+      )) {
+        store.confirmPayment(order);
+      }
+      store.settleCurrentBatch();
+      expect(store.currentBatchTarget, 1150);
+      expect(store.currentDivision.reduce((a, b) => a + b), 1150);
+      expect(store.currentDivision.every((amount) => amount % 50 == 0), isTrue);
+    });
+
+    test('system reset restores initial records, batch, and settings', () {
+      final store = DemoOmsStore();
+      store.settings
+        ..systemEnabled = false
+        ..profitRate = 40
+        ..growthRate = 30;
+      store.products.clear();
+      store.orders.clear();
+      store.batches.clear();
+      store.walletEntries.add(
+        DemoWalletEntry(
+          reference: 'TX-test',
+          orderId: 'ORD-test',
+          capital: 100,
+          profit: 30,
+          reseller: DemoReseller('Test', '01700000000', 'test@example.com'),
+        ),
+      );
+
+      store.resetSystem();
+
+      expect(store.settings.systemEnabled, isTrue);
+      expect(store.settings.profitRate, 30);
+      expect(store.settings.initialBatchTarget, 500);
+      expect(store.settings.growthRate, 50);
+      expect(store.currentBatchId, 'B-001');
+      expect(store.currentBatchTarget, 500);
+      expect(store.customers, hasLength(3));
+      expect(store.products, hasLength(3));
+      expect(store.resellers, hasLength(3));
+      expect(store.orders, hasLength(2));
+      expect(store.batches, hasLength(1));
+      expect(store.walletEntries, isEmpty);
+      expect(
+        store.auditLog.first,
+        'System reset to default data and settings.',
       );
     });
 
@@ -67,6 +157,7 @@ void main() {
       expect(store.canSettleCurrentBatch, isTrue);
       expect(store.settleCurrentBatch(), isTrue);
       expect(store.settledBatchIds, contains('B-001'));
+      expect(store.paidTotalFor('B-001'), 500);
       expect(
         store.orders
             .where((order) => order.batchId == 'B-001')
@@ -82,6 +173,8 @@ void main() {
       );
       expect(store.currentBatchId, 'B-002');
       expect(store.currentBatchTarget, 750);
+      expect(store.batches.last.previousTarget, 500);
+      expect(store.batches.last.growthRate, 50);
       expect(store.batchOrderTotal, 750);
     });
 

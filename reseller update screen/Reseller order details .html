@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reseller Order Details</title>
+
+<!-- Google Font: Inter -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- FontAwesome Icons CDN -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+:root {
+    --primary: #6366f1;
+    --primary-dark: #4f46e5;
+    --primary-light: #e0e7ff;
+    --bg-color: #f1f5f9;
+    --card-bg: #ffffff;
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --border-color: #cbd5e1;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+}
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:'Inter', sans-serif;
+}
+
+body{
+    background: var(--bg-color);
+    color: var(--text-main);
+    min-height:100vh;
+    -webkit-font-smoothing: antialiased;
+}
+
+.header{
+    background: var(--card-bg);
+    height:64px;
+    display:flex;
+    align-items:center;
+    padding:0 18px;
+    border-bottom:1px solid var(--border-color);
+    position:sticky;
+    top:0;
+    z-index:10;
+}
+
+.back{
+    width:40px;
+    height:40px;
+    border-radius:12px;
+    border:1px solid var(--border-color);
+    background: var(--bg-color);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:15px;
+    cursor:pointer;
+    margin-right:14px;
+    color: var(--text-main);
+    transition: background 0.2s;
+}
+
+.back:hover {
+    background: var(--border-color);
+}
+
+.header h2{
+    font-size:17px;
+    font-weight:700;
+}
+
+.container{
+    max-width:760px;
+    margin:0 auto;
+    padding:20px 16px 110px;
+}
+
+.order-top{
+    background:linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    color:#fff;
+    border-radius:22px;
+    padding:24px;
+    margin-bottom:18px;
+    box-shadow:0 10px 25px -5px rgba(79, 70, 229, 0.4);
+}
+
+.order-top small{
+    opacity:.85;
+    font-size:12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.order-top h1{
+    font-size:22px;
+    margin-top:4px;
+    font-weight: 800;
+}
+
+.order-meta{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-top:16px;
+    font-size:13px;
+    font-weight: 500;
+}
+
+.card{
+    background: var(--card-bg);
+    border-radius:22px;
+    padding:22px;
+    margin-bottom:18px;
+    border:1px solid var(--border-color);
+    box-shadow:0 10px 30px -5px rgba(0,0,0,.06);
+}
+
+.card-title{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:16px;
+    font-weight:700;
+    margin-bottom:18px;
+}
+
+.icon{
+    width:36px;
+    height:36px;
+    border-radius:12px;
+    background: var(--primary-light);
+    color: var(--primary);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:16px;
+}
+
+.info-row{
+    display:flex;
+    justify-content:space-between;
+    gap:20px;
+    padding:12px 0;
+    border-bottom:1px solid var(--border-color);
+}
+
+.info-row:last-child{
+    border-bottom:0;
+    padding-bottom:0;
+}
+
+.label{
+    color: var(--text-muted);
+    font-size:13px;
+    font-weight: 600;
+}
+
+.value{
+    text-align:right;
+    font-size:14px;
+    font-weight:600;
+    max-width:65%;
+}
+
+.description{
+    color: var(--text-muted);
+    font-size:13px;
+    line-height:1.6;
+    background: var(--bg-color);
+    padding:14px;
+    border-radius:12px;
+    margin-top:14px;
+    font-weight: 500;
+}
+
+.price-box{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:12px;
+    margin-top:16px;
+}
+
+.price-item{
+    background: var(--bg-color);
+    border-radius:14px;
+    padding:14px 10px;
+    text-align:center;
+    border: 1px solid var(--border-color);
+}
+
+.price-item span{
+    display:block;
+    color: var(--text-muted);
+    font-size:11px;
+    margin-bottom:4px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.price-item strong{
+    font-size:15px;
+    font-weight: 700;
+}
+
+.profit{
+    color: var(--success);
+}
+
+.status{
+    display:inline-flex;
+    align-items:center;
+    padding:5px 12px;
+    border-radius:20px;
+    font-size:11px;
+    font-weight:700;
+}
+
+.status.pending{
+    background:#fef3c7;
+    color:#b45309;
+}
+
+.status.processing{
+    background:#e0e7ff;
+    color:#4f46e5;
+}
+
+.status.paid{
+    background:#dcfce7;
+    color:#15803d;
+}
+
+.actions{
+    position:fixed;
+    bottom:0;
+    left:0;
+    right:0;
+    background: var(--card-bg);
+    border-top:1px solid var(--border-color);
+    padding:14px 16px;
+    z-index:20;
+    backdrop-filter: blur(4px);
+}
+
+.action-inner{
+    max-width:760px;
+    margin:auto;
+    display:grid;
+    grid-template-columns:1fr 1.5fr;
+    gap:12px;
+}
+
+.btn{
+    height:48px;
+    border-radius:12px;
+    border:none;
+    font-size:14px;
+    font-weight:700;
+    cursor:pointer;
+    transition: all 0.2s;
+}
+
+.btn-cancel{
+    background:#fee2e2;
+    color: var(--danger);
+    border:1px solid #fecaca;
+}
+
+.btn-cancel:hover {
+    background:#fecaca;
+}
+
+.btn-confirm{
+    background: var(--primary);
+    color:white;
+    box-shadow:0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.btn-confirm:hover{
+    background: var(--primary-dark);
+}
+
+.btn:active{
+    transform:scale(.98);
+}
+
+@media(max-width:480px){
+    .container{
+        padding:16px 12px 105px;
+    }
+    .card{
+        padding:18px;
+        border-radius:18px;
+    }
+    .order-top{
+        padding:20px;
+        border-radius:18px;
+    }
+    .order-top h1{
+        font-size:20px;
+    }
+    .price-box{
+        gap:8px;
+    }
+    .price-item{
+        padding:12px 6px;
+    }
+    .price-item strong{
+        font-size:13px;
+    }
+    .info-row{
+        align-items:flex-start;
+    }
+    .value{
+        max-width:60%;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<!-- Header -->
+<header class="header">
+    <button class="back" onclick="history.back()">
+        <i class="fa-solid fa-arrow-left"></i>
+    </button>
+    <h2>Reseller Order Details</h2>
+</header>
+
+<main class="container">
+
+    <!-- Order Summary -->
+    <section class="order-top">
+        <small>Reseller Order ID</small>
+        <h1>#ORD-10258</h1>
+
+        <div class="order-meta">
+            <span>26 Sep 2026, 03:20 PM</span>
+            <span class="status pending">Pending Payment</span>
+        </div>
+    </section>
+
+    <!-- Customer Details -->
+    <section class="card">
+        <div class="card-title">
+            <div class="icon">
+                <i class="fa-solid fa-user"></i>
+            </div>
+            Customer Details
+        </div>
+
+        <div class="info-row">
+            <span class="label">Name</span>
+            <span class="value">Md. Rahim Uddin</span>
+        </div>
+
+        <div class="info-row">
+            <span class="label">Mobile Number</span>
+            <span class="value">01XXXXXXXXX</span>
+        </div>
+
+        <div class="info-row">
+            <span class="label">Address</span>
+            <span class="value">Mirpur, Dhaka, Bangladesh</span>
+        </div>
+    </section>
+
+    <!-- Product Details -->
+    <section class="card">
+        <div class="card-title">
+            <div class="icon">
+                <i class="fa-solid fa-box-open"></i>
+            </div>
+            Product Details
+        </div>
+
+        <div class="info-row">
+            <span class="label">Category</span>
+            <span class="value">Electronics</span>
+        </div>
+
+        <div class="info-row">
+            <span class="label">Title</span>
+            <span class="value">Type-C Fast Charging Cable</span>
+        </div>
+
+        <div class="description">
+            High-quality Type-C charging and data cable with durable construction and fast charging support.
+        </div>
+
+        <div class="price-box">
+            <div class="price-item">
+                <span>Wholesale</span>
+                <strong>৳200</strong>
+            </div>
+
+            <div class="price-item">
+                <span>Retail</span>
+                <strong>৳300</strong>
+            </div>
+
+            <div class="price-item">
+                <span>Profit</span>
+                <strong class="profit">৳100</strong>
+            </div>
+        </div>
+    </section>
+
+    <!-- Payment & Order Status -->
+    <section class="card">
+        <div class="card-title">
+            <div class="icon">
+                <i class="fa-solid fa-wallet"></i>
+            </div>
+            Payment & Order Status
+        </div>
+
+        <div class="info-row">
+            <span class="label">Payment Status</span>
+            <span class="value">
+                <span class="status pending">Unpaid</span>
+            </span>
+        </div>
+
+        <div class="info-row">
+            <span class="label">Order Status</span>
+            <span class="value">
+                <span class="status processing">Processing</span>
+            </span>
+        </div>
+    </section>
+
+</main>
+
+<!-- Bottom Actions -->
+<div class="actions">
+    <div class="action-inner">
+        <button class="btn btn-cancel" onclick="cancelOrder()">
+            <i class="fa-solid fa-xmark"></i> Cancel
+        </button>
+
+        <button class="btn btn-confirm" onclick="payConfirm()">
+            <i class="fa-solid fa-check"></i> Pay & Confirm
+        </button>
+    </div>
+</div>
+
+<script>
+function payConfirm(){
+    const confirmPayment = confirm("Are you sure you want to pay and confirm this order?");
+    if(confirmPayment){
+        alert("Payment successful. Order confirmed.");
+    }
+}
+
+function cancelOrder(){
+    const cancel = confirm("Are you sure you want to cancel this order?");
+    if(cancel){
+        alert("Order cancelled successfully.");
+    }
+}
+</script>
+
+</body>
+</html>

@@ -1,3 +1,5 @@
+import 'package:excel/excel.dart';
+
 enum DemoOrderStatus { pending, processing, delivered, cancelled }
 
 enum DemoPaymentStatus { unpaid, simulated }
@@ -92,6 +94,22 @@ class DemoWithdrawal {
   String? transactionReference;
 }
 
+class DemoBatch {
+  const DemoBatch({
+    required this.id,
+    required this.target,
+    required this.division,
+    this.previousTarget,
+    this.growthRate,
+  });
+
+  final String id;
+  final int target;
+  final List<int> division;
+  final int? previousTarget;
+  final int? growthRate;
+}
+
 class DemoWalletEntry {
   const DemoWalletEntry({
     required this.reference,
@@ -110,6 +128,11 @@ class DemoWalletEntry {
 
 class DemoOmsStore {
   DemoOmsStore() {
+    _seedInitialData();
+    createNextBatch(initial: true);
+  }
+
+  void _seedInitialData() {
     customers.addAll(const [
       DemoCustomer('Rahim Uddin', '01700000001', 'Mirpur, Dhaka'),
       DemoCustomer('Karim Ahmed', '01700000002', 'Dhanmondi, Dhaka'),
@@ -145,7 +168,6 @@ class DemoOmsStore {
         active: false,
       ),
     ]);
-    createNextBatch(initial: true);
   }
 
   final settings = DemoSettings();
@@ -153,6 +175,7 @@ class DemoOmsStore {
   final products = <DemoProduct>[];
   final resellers = <DemoReseller>[];
   final orders = <DemoOrder>[];
+  final batches = <DemoBatch>[];
   final withdrawals = <DemoWithdrawal>[];
   final walletEntries = <DemoWalletEntry>[];
   final auditLog = <String>[
@@ -194,6 +217,16 @@ class DemoOmsStore {
       )
       .fold(0, (total, order) => total + order.wholesalePrice);
 
+  int paidTotalFor(String batchId) => orders
+      .where(
+        (order) =>
+            order.batchId == batchId &&
+            order.paymentStatus == DemoPaymentStatus.simulated &&
+            (order.status == DemoOrderStatus.processing ||
+                order.status == DemoOrderStatus.delivered),
+      )
+      .fold(0, (total, order) => total + order.wholesalePrice);
+
   int get resellerCapital =>
       resellers.fold(0, (total, reseller) => total + reseller.capital);
 
@@ -226,8 +259,13 @@ class DemoOmsStore {
     products.map((product) => product.wholesalePrice).toList(),
   );
 
+  static int calculateNextBatchTarget(int previousTarget, int growthRate) =>
+      (previousTarget * (100 + growthRate) / 5000).round() * 50;
+
   static List<int> divideTarget(int target, List<int> availablePrices) {
-    if (target <= 0 || availablePrices.isEmpty) return const [];
+    if (target <= 0 || target % 50 != 0 || availablePrices.isEmpty) {
+      return const [];
+    }
     final prices =
         availablePrices
             .where((price) => price > 0 && price % 50 == 0 && price <= target)
@@ -270,9 +308,11 @@ class DemoOmsStore {
         'At least one customer and product are required to create orders.',
       );
     }
+    final previousTarget = initial ? null : currentBatchTarget;
+    final appliedGrowthRate = initial ? null : settings.growthRate;
     final target = initial
         ? settings.initialBatchTarget
-        : (currentBatchTarget * (100 + settings.growthRate) / 100).round();
+        : calculateNextBatchTarget(previousTarget!, appliedGrowthRate!);
     final division = divideTarget(
       target,
       products.map((product) => product.wholesalePrice).toList(),
@@ -287,6 +327,15 @@ class DemoOmsStore {
           'B-${(int.parse(currentBatchId.substring(2)) + 1).toString().padLeft(3, '0')}';
       currentBatchTarget = target;
     }
+    batches.add(
+      DemoBatch(
+        id: currentBatchId,
+        target: target,
+        division: List.unmodifiable(division),
+        previousTarget: previousTarget,
+        growthRate: appliedGrowthRate,
+      ),
+    );
     for (final amount in division) {
       final matchingProducts = products
           .where((product) => product.wholesalePrice == amount)
@@ -333,6 +382,7 @@ class DemoOmsStore {
       products.map((product) => product.wholesalePrice).toList(),
     );
     if (target <= 0 ||
+        target % 50 != 0 ||
         division.isEmpty ||
         division.any(
           (amount) =>
@@ -348,8 +398,16 @@ class DemoOmsStore {
       );
     }
     orders.removeWhere((order) => order.batchId == currentBatchId);
+    batches.removeWhere((batch) => batch.id == currentBatchId);
     currentBatchTarget = target;
     settings.initialBatchTarget = target;
+    batches.add(
+      DemoBatch(
+        id: currentBatchId,
+        target: target,
+        division: List.unmodifiable(division),
+      ),
+    );
     for (final amount in division) {
       final matchingProducts = products
           .where((product) => product.wholesalePrice == amount)
@@ -464,8 +522,10 @@ class DemoOmsStore {
         'Full settlement is unavailable until all ৳$currentBatchTarget of this batch are paid.',
       );
     }
-    final nextTarget = (currentBatchTarget * (100 + settings.growthRate) / 100)
-        .round();
+    final nextTarget = calculateNextBatchTarget(
+      currentBatchTarget,
+      settings.growthRate,
+    );
     final nextDivision = divideTarget(
       nextTarget,
       products.map((product) => product.wholesalePrice).toList(),
@@ -589,6 +649,7 @@ class DemoOmsStore {
         'Only processing withdrawal requests can receive a result.',
       );
     }
+
     request.status = approved
         ? DemoWithdrawalStatus.approved
         : DemoWithdrawalStatus.cancelled;
@@ -598,6 +659,36 @@ class DemoOmsStore {
       0,
       'DEMO RESULT ONLY: ${request.id} ${approved ? 'approved' : 'cancelled'} with ${request.transactionReference}; provider not contacted.',
     );
+  }
+
+  void resetSystem() {
+    customers.clear();
+    products.clear();
+    resellers.clear();
+    orders.clear();
+    batches.clear();
+    withdrawals.clear();
+    walletEntries.clear();
+    auditLog.clear();
+    settledBatchIds.clear();
+    settings
+      ..systemEnabled = true
+      ..profitRate = 30
+      ..initialBatchTarget = 500
+      ..growthRate = 50
+      ..cycleHours = 36
+      ..transferHours = 6;
+    currentBatchId = 'B-001';
+    currentBatchTarget = settings.initialBatchTarget;
+    _nextOrderNumber = 1001;
+    _nextWithdrawalNumber = 5001;
+    _nextTransactionNumber = 1;
+    _customerCursor = 0;
+    _productCursor = 0;
+    _resellerCursor = 0;
+    _seedInitialData();
+    createNextBatch(initial: true);
+    auditLog.insert(0, 'System reset to default data and settings.');
   }
 
   void _requireCurrentOpenOrder(DemoOrder order) {
@@ -648,6 +739,28 @@ List<List<String>> parseCsvRows(String input) {
   if (field.isNotEmpty || row.isNotEmpty) {
     row.add(field.toString().trim());
     if (row.any((value) => value.isNotEmpty)) rows.add(row);
+  }
+  return rows;
+}
+
+List<List<String>> parseExcelRows(List<int> bytes) {
+  if (bytes.isEmpty) {
+    throw const FormatException('The selected Excel file is empty.');
+  }
+  final workbook = Excel.decodeBytes(bytes);
+  final sheets = workbook.tables.values;
+  if (sheets.isEmpty) {
+    throw const FormatException('The Excel workbook contains no worksheets.');
+  }
+  final rows = sheets.first.rows
+      .map(
+        (row) =>
+            row.map((cell) => cell?.value?.toString().trim() ?? '').toList(),
+      )
+      .where((row) => row.any((value) => value.isNotEmpty))
+      .toList();
+  if (rows.isEmpty) {
+    throw const FormatException('The selected Excel worksheet is empty.');
   }
   return rows;
 }

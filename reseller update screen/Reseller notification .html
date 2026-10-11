@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reseller Notifications</title>
+
+<!-- Google Font: Inter -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- FontAwesome Icons CDN -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+:root {
+    --primary: #6366f1;
+    --primary-dark: #4f46e5;
+    --primary-light: #e0e7ff;
+    --bg-color: #f1f5f9;
+    --card-bg: #ffffff;
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --border-color: #cbd5e1;
+    --success: #10b981;
+    --danger: #ef4444;
+}
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:'Inter', sans-serif;
+}
+
+body{
+    background: var(--bg-color);
+    color: var(--text-main);
+    min-height:100vh;
+    padding-bottom:30px;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Header */
+.header{
+    height:64px;
+    background: var(--card-bg);
+    border-bottom:1px solid var(--border-color);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 18px;
+    position:sticky;
+    top:0;
+    z-index:100;
+}
+
+.back-btn{
+    width:40px;
+    height:40px;
+    border:none;
+    border-radius:12px;
+    background: var(--bg-color);
+    font-size:15px;
+    cursor:pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-main);
+    transition: background 0.2s;
+}
+
+.back-btn:hover {
+    background: var(--border-color);
+}
+
+.header-title-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.header-icon {
+    font-size: 18px;
+    color: var(--primary);
+}
+
+.header-title{
+    font-size:17px;
+    font-weight:700;
+}
+
+.mark-all{
+    border:none;
+    background:none;
+    color: var(--primary);
+    font-size:13px;
+    font-weight:700;
+    cursor:pointer;
+}
+
+.mark-all:hover {
+    text-decoration: underline;
+}
+
+/* Container */
+.container{
+    max-width:650px;
+    margin:22px auto;
+    padding:0 16px;
+}
+
+/* Filter */
+.filters{
+    display:flex;
+    gap:8px;
+    overflow-x:auto;
+    margin-bottom:18px;
+    padding-bottom: 4px;
+}
+
+.filter-btn{
+    border:none;
+    padding:9px 18px;
+    border-radius:12px;
+    background: var(--card-bg);
+    color: var(--text-muted);
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    white-space:nowrap;
+    border: 1px solid var(--border-color);
+    transition: all 0.2s;
+}
+
+.filter-btn.active{
+    background: var(--primary);
+    color:#fff;
+    border-color: var(--primary);
+}
+
+/* Notification */
+.notification-list{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+}
+
+.notification{
+    background: var(--card-bg);
+    border-radius:18px;
+    padding:18px;
+    display:flex;
+    gap:14px;
+    cursor:pointer;
+    border:1px solid var(--border-color);
+    box-shadow:0 4px 15px -3px rgba(0,0,0,.04);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.notification:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px -3px rgba(0,0,0,.06);
+}
+
+.notification.unread{
+    border-left:4px solid var(--primary);
+    background:#faf8ff;
+}
+
+.notification-icon{
+    min-width:44px;
+    width:44px;
+    height:44px;
+    border-radius:12px;
+    background: var(--primary-light);
+    color: var(--primary);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:18px;
+}
+
+.notification-content{
+    flex:1;
+    min-width:0;
+}
+
+.notification-top{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom:4px;
+}
+
+.notification-title{
+    font-size:15px;
+    font-weight:700;
+    color: var(--text-main);
+}
+
+.notification-time{
+    color: var(--text-muted);
+    font-size:11px;
+    white-space:nowrap;
+    font-weight: 500;
+}
+
+.notification-text{
+    color: var(--text-muted);
+    font-size:13px;
+    line-height:1.5;
+    font-weight: 500;
+}
+
+.unread-dot{
+    width:8px;
+    height:8px;
+    border-radius:50%;
+    background: var(--primary);
+    margin-top:6px;
+}
+
+/* Empty */
+.empty{
+    display:none;
+    text-align:center;
+    padding:60px 20px;
+    color: var(--text-muted);
+}
+
+.empty-icon{
+    font-size:42px;
+    margin-bottom:12px;
+    color: var(--border-color);
+}
+
+.empty-title{
+    color: var(--text-main);
+    font-weight:700;
+    font-size:16px;
+    margin-bottom:6px;
+}
+
+.empty-text{
+    font-size:13px;
+}
+
+/* Modal */
+.modal{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.55);
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    z-index:999;
+    backdrop-filter: blur(4px);
+}
+
+.modal-box{
+    width:100%;
+    max-width:420px;
+    background: var(--card-bg);
+    border-radius:22px;
+    padding:28px;
+    position:relative;
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+}
+
+.close-btn{
+    position:absolute;
+    top:20px;
+    right:20px;
+    width:36px;
+    height:36px;
+    border:none;
+    border-radius:12px;
+    background: var(--bg-color);
+    font-size:16px;
+    cursor:pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-main);
+    transition: background 0.2s;
+}
+
+.close-btn:hover {
+    background: var(--border-color);
+}
+
+.modal-icon{
+    width:56px;
+    height:56px;
+    border-radius:16px;
+    background: var(--primary-light);
+    color: var(--primary);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:22px;
+    margin-bottom:16px;
+}
+
+.modal-title{
+    font-size:18px;
+    font-weight:700;
+    margin-bottom:8px;
+    color: var(--text-main);
+}
+
+.modal-text{
+    color: var(--text-muted);
+    font-size:13px;
+    line-height:1.6;
+    font-weight: 500;
+}
+
+.modal-time{
+    color: var(--text-muted);
+    font-size:12px;
+    margin-top:16px;
+    font-weight: 600;
+}
+
+/* Responsive */
+@media(max-width:480px){
+    .header{
+        padding:0 14px;
+    }
+    .header-title{
+        font-size:16px;
+    }
+    .notification{
+        padding:16px;
+    }
+    .container {
+        margin-top: 14px;
+        padding: 0 12px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<!-- Header -->
+<header class="header">
+    <button class="back-btn" onclick="goBack()">
+        <i class="fa-solid fa-arrow-left"></i>
+    </button>
+    
+    <div class="header-title-wrapper">
+        <i class="fa-solid fa-bell header-icon"></i>
+        <div class="header-title">Notifications</div>
+    </div>
+
+    <button class="mark-all" onclick="markAllAsRead()">
+        Mark All Read
+    </button>
+</header>
+
+<main class="container">
+
+    <!-- Filters -->
+    <div class="filters">
+        <button class="filter-btn active" onclick="filterNotifications('all', this)">All</button>
+        <button class="filter-btn" onclick="filterNotifications('unread', this)">Unread</button>
+        <button class="filter-btn" onclick="filterNotifications('read', this)">Read</button>
+    </div>
+
+    <!-- Notification List -->
+    <div class="notification-list" id="notificationList">
+
+        <!-- Notification 1 -->
+        <div class="notification unread" data-status="unread" onclick="openNotification('Order Assigned', 'A new reseller order has been assigned to your account. Please review the delivery details.', '10 minutes ago', 'fa-clipboard-list', this)">
+            <div class="notification-icon">
+                <i class="fa-solid fa-clipboard-list"></i>
+            </div>
+            <div class="notification-content">
+                <div class="notification-top">
+                    <div class="notification-title">Order Assigned</div>
+                    <div class="notification-time">10 min ago</div>
+                </div>
+                <div class="notification-text">A new reseller order has been assigned to your account.</div>
+            </div>
+            <div class="unread-dot"></div>
+        </div>
+
+        <!-- Notification 2 -->
+        <div class="notification unread" data-status="unread" onclick="openNotification('Payment Required', 'Payment is required for your pending order. Open details to pay and confirm.', '30 minutes ago', 'fa-credit-card', this)">
+            <div class="notification-icon">
+                <i class="fa-solid fa-credit-card"></i>
+            </div>
+            <div class="notification-content">
+                <div class="notification-top">
+                    <div class="notification-title">Payment Required</div>
+                    <div class="notification-time">30 min ago</div>
+                </div>
+                <div class="notification-text">Payment is required for your pending order.</div>
+            </div>
+            <div class="unread-dot"></div>
+        </div>
+
+        <!-- Notification 3 -->
+        <div class="notification" data-status="read" onclick="openNotification('Order Completed', 'Your reseller order has been successfully completed and delivered.', '2 hours ago', 'fa-circle-check', this)">
+            <div class="notification-icon">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <div class="notification-content">
+                <div class="notification-top">
+                    <div class="notification-title">Order Completed</div>
+                    <div class="notification-time">2 hours ago</div>
+                </div>
+                <div class="notification-text">Your reseller order has been successfully completed.</div>
+            </div>
+        </div>
+
+        <!-- Notification 4 -->
+        <div class="notification" data-status="read" onclick="openNotification('Commission Approved', 'Your commission withdrawal request has been approved successfully.', 'Yesterday', 'fa-wallet', this)">
+            <div class="notification-icon">
+                <i class="fa-solid fa-wallet"></i>
+            </div>
+            <div class="notification-content">
+                <div class="notification-top">
+                    <div class="notification-title">Commission Approved</div>
+                    <div class="notification-time">Yesterday</div>
+                </div>
+                <div class="notification-text">Your commission withdrawal request has been approved.</div>
+            </div>
+        </div>
+
+        <!-- Notification 5 -->
+        <div class="notification" data-status="read" onclick="openNotification('System Update', 'The reseller portal has been updated with new features and improvements.', '2 days ago', 'fa-bullhorn', this)">
+            <div class="notification-icon">
+                <i class="fa-solid fa-bullhorn"></i>
+            </div>
+            <div class="notification-content">
+                <div class="notification-top">
+                    <div class="notification-title">System Update</div>
+                    <div class="notification-time">2 days ago</div>
+                </div>
+                <div class="notification-text">The reseller portal has been updated with new features.</div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Empty State -->
+    <div class="empty" id="emptyState">
+        <div class="empty-icon">
+            <i class="fa-regular fa-bell-slash"></i>
+        </div>
+        <div class="empty-title">No Notifications</div>
+        <div class="empty-text">You don't have any notifications here right now.</div>
+    </div>
+
+</main>
+
+<!-- Notification Details Modal -->
+<div class="modal" id="notificationModal">
+    <div class="modal-box">
+        <button class="close-btn" onclick="closeNotification()">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+        <div class="modal-icon" id="modalIconBox">
+            <i class="fa-solid fa-bell" id="modalIcon"></i>
+        </div>
+        <div class="modal-title" id="modalTitle">Notification</div>
+        <div class="modal-text" id="modalText">Notification details.</div>
+        <div class="modal-time" id="modalTime">Time</div>
+    </div>
+</div>
+
+<script>
+/* Back */
+function goBack(){
+    window.history.back();
+}
+
+/* Filter Notifications */
+function filterNotifications(type, button){
+    document.querySelectorAll(".filter-btn").forEach(function(btn){
+        btn.classList.remove("active");
+    });
+    button.classList.add("active");
+
+    const notifications = document.querySelectorAll(".notification");
+    let visibleCount = 0;
+
+    notifications.forEach(function(notification){
+        const status = notification.getAttribute("data-status");
+        if(type === "all" || status === type){
+            notification.style.display = "flex";
+            visibleCount++;
+        }else{
+            notification.style.display = "none";
+        }
+    });
+
+    document.getElementById("emptyState").style.display = visibleCount === 0 ? "block" : "none";
+}
+
+/* Open Notification */
+function openNotification(title, text, time, iconClass, element){
+    if(element.classList.contains("unread")){
+        element.classList.remove("unread");
+        element.setAttribute("data-status", "read");
+        const dot = element.querySelector(".unread-dot");
+        if(dot){
+            dot.remove();
+        }
+    }
+
+    document.getElementById("modalIcon").className = "fa-solid " + iconClass;
+    document.getElementById("modalTitle").innerText = title;
+    document.getElementById("modalText").innerText = text;
+    document.getElementById("modalTime").innerText = time;
+
+    document.getElementById("notificationModal").style.display = "flex";
+}
+
+/* Close Notification */
+function closeNotification(){
+    document.getElementById("notificationModal").style.display = "none";
+}
+
+/* Mark All As Read */
+function markAllAsRead(){
+    const notifications = document.querySelectorAll(".notification.unread");
+    notifications.forEach(function(notification){
+        notification.classList.remove("unread");
+        notification.setAttribute("data-status", "read");
+        const dot = notification.querySelector(".unread-dot");
+        if(dot){
+            dot.remove();
+        }
+    });
+}
+
+/* Close modal outside click */
+document.getElementById("notificationModal").addEventListener("click", function(e){
+    if(e.target === this){
+        closeNotification();
+    }
+});
+</script>
+
+</body>
+</html>

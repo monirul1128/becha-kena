@@ -158,6 +158,7 @@ const adminMenu = <_NavItem>[
   _NavItem('adminWallet', 'Wallet', Icons.account_balance_wallet_rounded),
   _NavItem('adminNotifications', 'Notifications', Icons.notifications_rounded),
   _NavItem('settings', 'Settings', Icons.settings_rounded),
+  _NavItem('about', 'About Us', Icons.info_outline_rounded),
 ];
 
 class HubShell extends StatefulWidget {
@@ -173,7 +174,7 @@ class _HubShellState extends State<HubShell> {
   late final AdminAuthService _adminAuth =
       widget.adminAuth ?? FirebaseAdminAuthService(FirebaseAuth.instance);
   String? _role;
-  String _page = 'roles';
+  String _page = 'register'; // Changed from 'roles' to 'register'
   String _previousPage = 'orders';
   String? _selectedOrderId;
 
@@ -222,7 +223,7 @@ class _HubShellState extends State<HubShell> {
     if (!mounted) return;
     setState(() {
       _role = null;
-      _page = 'roles';
+      _page = 'register'; // Changed from 'roles' to 'register'
     });
   }
 
@@ -242,7 +243,7 @@ class _HubShellState extends State<HubShell> {
     if (!mounted) return;
     setState(() {
       _role = null;
-      _page = 'roles';
+      _page = 'register'; // Changed from 'roles' to 'register'
     });
   }
 
@@ -255,7 +256,27 @@ class _HubShellState extends State<HubShell> {
   @override
   Widget build(BuildContext context) {
     if (_role == null) {
-      return RolePicker(onSelect: _enter);
+      return _page == 'about'
+          ? AboutUsPage(
+              onBack: () => setState(() => _page = 'register'),
+            )
+          : _page == 'adminLogin'
+              ? AdminLoginPage(
+                  onSignIn: _signInAdmin,
+                  onMessage: _message,
+                  onBack: () => setState(() => _page = 'register'),
+                )
+              : AuthPage(
+                  register: true,
+                  onMessage: _message,
+                  onOpen: (page) {
+                    if (page == 'adminLogin') {
+                      setState(() => _page = 'adminLogin');
+                    } else {
+                      _go(page);
+                    }
+                  },
+                );
     }
 
     final isReseller = _role == 'reseller';
@@ -265,6 +286,7 @@ class _HubShellState extends State<HubShell> {
       'login',
       'register',
       'adminLogin',
+      'about',
     }.contains(_page);
     return Scaffold(
       appBar: AppBar(
@@ -278,7 +300,7 @@ class _HubShellState extends State<HubShell> {
                 onPressed: _page == 'adminLogin'
                     ? () => setState(() {
                         _role = null;
-                        _page = 'roles';
+                        _page = 'register';
                       })
                     : () => _go(
                         _page == 'orderDetails'
@@ -393,6 +415,7 @@ class _HubShellState extends State<HubShell> {
       'adminWallet': 'Wallet',
       'adminNotifications': 'Notifications',
       'settings': 'System Settings',
+      'about': 'About Us',
     };
     return titles[page] ?? 'BKH Business Manager';
   }
@@ -441,15 +464,25 @@ class _HubShellState extends State<HubShell> {
         return NotificationsPage(onMessage: _message, admin: true);
       case 'settings':
         return AdminSettings(auth: _adminAuth, onSignOut: _signOutAdmin);
+      case 'about':
+        return const AboutUsPage();
       default:
-        return RolePicker(onSelect: _enter);
+        return RolePicker(
+          onSelect: _enter,
+          onAboutUs: () => _go('about'),
+        );
     }
   }
 }
 
 class RolePicker extends StatelessWidget {
-  const RolePicker({required this.onSelect, super.key});
+  const RolePicker({
+    required this.onSelect,
+    required this.onAboutUs,
+    super.key,
+  });
   final ValueChanged<String> onSelect;
+  final VoidCallback onAboutUs;
 
   @override
   Widget build(BuildContext context) {
@@ -517,8 +550,71 @@ class RolePicker extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(color: muted, fontSize: 12),
             ),
+            TextButton.icon(
+              onPressed: onAboutUs,
+              icon: const Icon(Icons.info_outline_rounded),
+              label: const Text('About Us'),
+            ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class AboutUsPage extends StatelessWidget {
+  const AboutUsPage({this.onBack, super.key});
+
+  final VoidCallback? onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: onBack == null
+          ? null
+          : AppBar(
+              leading: IconButton(
+                tooltip: 'Back',
+                onPressed: onBack,
+                icon: const Icon(Icons.arrow_back_rounded),
+              ),
+              title: const Text('About Us'),
+            ),
+      body: PageBody(
+        children: const [
+          Panel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.storefront_rounded, color: brand, size: 34),
+                SizedBox(height: 14),
+                Text(
+                  'M/S Riyad Medicine Corner',
+                  style: TextStyle(
+                    color: ink,
+                    fontSize: 21,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Business information as listed on the trade license.',
+                  style: TextStyle(color: muted, height: 1.5),
+                ),
+                SizedBox(height: 16),
+                Divider(height: 1, color: line),
+                KeyValueRow(
+                  'Trade License Number',
+                  'TRAD/BCC/22794/2025',
+                ),
+                KeyValueRow(
+                  'Business Address',
+                  'Sadar Road, Barishal (Ward No: 19)',
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -633,6 +729,7 @@ class HubDrawer extends StatelessWidget {
               'Create account',
               Icons.person_add_alt_1_rounded,
             ),
+            const _NavItem('about', 'About Us', Icons.info_outline_rounded),
           ]
         : adminMenu;
     return Drawer(
@@ -2634,11 +2731,13 @@ class AdminLoginPage extends StatefulWidget {
   const AdminLoginPage({
     required this.onSignIn,
     required this.onMessage,
+    this.onBack,
     super.key,
   });
 
   final Future<void> Function(String email, String password) onSignIn;
   final ValueChanged<String> onMessage;
+  final VoidCallback? onBack;
 
   @override
   State<AdminLoginPage> createState() => _AdminLoginPageState();
@@ -2676,61 +2775,73 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    return PageBody(
-      children: [
-        const SizedBox(height: 24),
-        const Icon(Icons.admin_panel_settings_rounded, size: 58, color: brand),
-        const SizedBox(height: 12),
-        const Text(
-          'Administrator Sign In',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
-        ),
-        const SizedBox(height: 18),
-        Panel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const FieldLabel('EMAIL ADDRESS'),
-              TextField(
-                controller: email,
-                keyboardType: TextInputType.emailAddress,
-                autofillHints: const [AutofillHints.username],
-                decoration: const InputDecoration(
-                  hintText: 'Enter administrator email',
-                ),
+    return Scaffold(
+      appBar: widget.onBack != null
+          ? AppBar(
+              leading: IconButton(
+                tooltip: 'Back',
+                onPressed: widget.onBack,
+                icon: const Icon(Icons.arrow_back_rounded),
               ),
-              const SizedBox(height: 14),
-              const FieldLabel('PASSWORD'),
-              TextField(
-                controller: password,
-                obscureText: obscurePassword,
-                autofillHints: const [AutofillHints.password],
-                decoration: InputDecoration(
-                  hintText: 'Enter password',
-                  suffixIcon: IconButton(
-                    onPressed: () =>
-                        setState(() => obscurePassword = !obscurePassword),
-                    icon: Icon(
-                      obscurePassword ? Icons.visibility : Icons.visibility_off,
-                    ),
+              title: const Text('Administrator Sign In'),
+            )
+          : null,
+      body: PageBody(
+        children: [
+          const SizedBox(height: 24),
+          const Icon(Icons.admin_panel_settings_rounded, size: 58, color: brand),
+          const SizedBox(height: 12),
+          const Text(
+            'Administrator Sign In',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 18),
+          Panel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const FieldLabel('EMAIL ADDRESS'),
+                TextField(
+                  controller: email,
+                  keyboardType: TextInputType.emailAddress,
+                  autofillHints: const [AutofillHints.username],
+                  decoration: const InputDecoration(
+                    hintText: 'Enter administrator email',
                   ),
                 ),
-                onSubmitted: (_) => _submit(),
-              ),
-              const SizedBox(height: 18),
-              SizedBox(
-                width: double.infinity,
-                child: PrimaryButton(
-                  label: busy ? 'Signing in...' : 'Sign in',
-                  icon: Icons.login_rounded,
-                  onPressed: busy ? null : _submit,
+                const SizedBox(height: 14),
+                const FieldLabel('PASSWORD'),
+                TextField(
+                  controller: password,
+                  obscureText: obscurePassword,
+                  autofillHints: const [AutofillHints.password],
+                  decoration: InputDecoration(
+                    hintText: 'Enter password',
+                    suffixIcon: IconButton(
+                      onPressed: () =>
+                          setState(() => obscurePassword = !obscurePassword),
+                      icon: Icon(
+                        obscurePassword ? Icons.visibility : Icons.visibility_off,
+                      ),
+                    ),
+                  ),
+                  onSubmitted: (_) => _submit(),
                 ),
-              ),
-            ],
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  child: PrimaryButton(
+                    label: busy ? 'Signing in...' : 'Sign in',
+                    icon: Icons.login_rounded,
+                    onPressed: busy ? null : _submit,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -2757,158 +2868,181 @@ class _AuthPageState extends State<AuthPage> {
   @override
   Widget build(BuildContext context) {
     final register = widget.register;
-    return PageBody(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-      children: [
-        const SizedBox(height: 8),
-        Container(
-          width: 82,
-          height: 82,
-          margin: const EdgeInsets.symmetric(horizontal: 115),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(colors: [brand, brandDark]),
-            borderRadius: BorderRadius.circular(25),
-          ),
-          child: Icon(
-            register ? Icons.person_add_alt_1 : Icons.login_rounded,
-            color: Colors.white,
-            size: 38,
-          ),
-        ),
-        const SizedBox(height: 17),
-        Text(
-          register ? 'Become a Reseller' : 'Welcome Back',
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 25,
-            fontWeight: FontWeight.w900,
-            color: ink,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          register
-              ? 'Join our platform and start your business today'
-              : 'Login to your reseller account',
-          textAlign: TextAlign.center,
-          style: const TextStyle(color: muted, fontSize: 15),
-        ),
-        const SizedBox(height: 22),
-        Panel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                register ? 'Reseller Registration' : 'Reseller Login',
-                style: const TextStyle(
-                  color: ink,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                ),
+    return Scaffold(
+      appBar: !register
+          ? AppBar(
+              leading: IconButton(
+                tooltip: 'Back',
+                onPressed: () => widget.onOpen('register'),
+                icon: const Icon(Icons.arrow_back_rounded),
               ),
-              const SizedBox(height: 18),
-              if (register) ...[
-                const FieldLabel('FULL NAME'),
-                const TextField(
-                  decoration: InputDecoration(hintText: 'Enter your full name'),
-                ),
-                const SizedBox(height: 14),
-              ],
-              const FieldLabel('MOBILE NUMBER'),
-              const TextField(
-                keyboardType: TextInputType.phone,
-                decoration: InputDecoration(hintText: 'Enter mobile number'),
-              ),
-              if (register) ...[
-                const SizedBox(height: 14),
-                const FieldLabel('EMAIL ADDRESS (Optional)'),
-                const TextField(
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    hintText: 'Enter your email address',
+              title: const Text('Welcome Back'),
+            )
+          : null,
+      body: PageBody(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+        children: [
+          const SizedBox(height: 8),
+          Container(
+            width: 82,
+            height: 82,
+            margin: const EdgeInsets.symmetric(horizontal: 115),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(colors: [brand, brandDark]),
+              borderRadius: BorderRadius.circular(25),
+            ),
+            child: Icon(
+              register ? Icons.person_add_alt_1 : Icons.login_rounded,
+              color: Colors.white,
+              size: 38,
+            ),
+          ),
+          const SizedBox(height: 17),
+          Text(
+            register ? 'Become a Reseller' : 'Welcome Back',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 25,
+              fontWeight: FontWeight.w900,
+              color: ink,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            register
+                ? 'Join our platform and start your business today'
+                : 'Login to your reseller account',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: muted, fontSize: 15),
+          ),
+          const SizedBox(height: 22),
+          Panel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  register ? 'Reseller Registration' : 'Reseller Login',
+                  style: const TextStyle(
+                    color: ink,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
-              ],
-              const SizedBox(height: 14),
-              const FieldLabel('PASSWORD'),
-              TextField(
-                obscureText: obscure,
-                decoration: InputDecoration(
-                  hintText: register ? 'Create a password' : 'Enter password',
-                  suffixIcon: IconButton(
-                    onPressed: () => setState(() => obscure = !obscure),
-                    icon: Icon(
-                      obscure ? Icons.visibility : Icons.visibility_off,
+                const SizedBox(height: 18),
+                if (register) ...[
+                  const FieldLabel('FULL NAME'),
+                  const TextField(
+                    decoration: InputDecoration(hintText: 'Enter your full name'),
+                  ),
+                  const SizedBox(height: 14),
+                ],
+                const FieldLabel('MOBILE NUMBER'),
+                const TextField(
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(hintText: 'Enter mobile number'),
+                ),
+                if (register) ...[
+                  const SizedBox(height: 14),
+                  const FieldLabel('EMAIL ADDRESS (Optional)'),
+                  const TextField(
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: InputDecoration(
+                      hintText: 'Enter your email address',
                     ),
                   ),
-                ),
-              ),
-              if (register) ...[
+                ],
                 const SizedBox(height: 14),
-                const FieldLabel('CONFIRM PASSWORD'),
+                const FieldLabel('PASSWORD'),
                 TextField(
                   obscureText: obscure,
-                  decoration: const InputDecoration(
-                    hintText: 'Confirm your password',
-                  ),
-                ),
-                CheckboxListTile(
-                  value: agree,
-                  onChanged: (value) => setState(() => agree = value ?? false),
-                  contentPadding: EdgeInsets.zero,
-                  controlAffinity: ListTileControlAffinity.leading,
-                  title: const Text(
-                    'I agree to the Terms & Conditions and Privacy Policy.',
-                    style: TextStyle(color: muted, fontSize: 13),
-                  ),
-                ),
-              ] else
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () => widget.onMessage(
-                      'Contact support to reset your password.',
+                  decoration: InputDecoration(
+                    hintText: register ? 'Create a password' : 'Enter password',
+                    suffixIcon: IconButton(
+                      onPressed: () => setState(() => obscure = !obscure),
+                      icon: Icon(
+                        obscure ? Icons.visibility : Icons.visibility_off,
+                      ),
                     ),
-                    child: const Text('Forgot Password?'),
                   ),
                 ),
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: PrimaryButton(
-                  label: register ? 'Create Reseller Account' : 'Login',
-                  icon: register ? Icons.person_add_alt_1 : Icons.login_rounded,
-                  onPressed: () {
-                    if (register && !agree) {
-                      widget.onMessage(
-                        'Please agree to the terms to continue.',
-                      );
-                    } else {
-                      widget.onMessage(
-                        register
-                            ? 'Registration form is ready to connect.'
-                            : 'Login form is ready to connect.',
-                      );
-                    }
-                  },
-                ),
-              ),
-              const SizedBox(height: 15),
-              Center(
-                child: TextButton(
-                  onPressed: () =>
-                      widget.onOpen(register ? 'login' : 'register'),
-                  child: Text(
-                    register
-                        ? 'Already have an account? Login'
-                        : "Don't have an account? Create Reseller Account",
+                if (register) ...[
+                  const SizedBox(height: 14),
+                  const FieldLabel('CONFIRM PASSWORD'),
+                  TextField(
+                    obscureText: obscure,
+                    decoration: const InputDecoration(
+                      hintText: 'Confirm your password',
+                    ),
+                  ),
+                  CheckboxListTile(
+                    value: agree,
+                    onChanged: (value) => setState(() => agree = value ?? false),
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    title: const Text(
+                      'I agree to the Terms & Conditions and Privacy Policy.',
+                      style: TextStyle(color: muted, fontSize: 13),
+                    ),
+                  ),
+                ] else
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () => widget.onMessage(
+                        'Contact support to reset your password.',
+                      ),
+                      child: const Text('Forgot Password?'),
+                    ),
+                  ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: PrimaryButton(
+                    label: register ? 'Create Reseller Account' : 'Login',
+                    icon: register ? Icons.person_add_alt_1 : Icons.login_rounded,
+                    onPressed: () {
+                      if (register && !agree) {
+                        widget.onMessage(
+                          'Please agree to the terms to continue.',
+                        );
+                      } else {
+                        widget.onMessage(
+                          register
+                              ? 'Registration form is ready to connect.'
+                              : 'Login form is ready to connect.',
+                        );
+                      }
+                    },
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 15),
+                Center(
+                  child: TextButton(
+                    onPressed: () =>
+                        widget.onOpen(register ? 'login' : 'register'),
+                    child: Text(
+                      register
+                          ? 'Already have an account? Login'
+                          : "Don't have an account? Create Reseller Account",
+                    ),
+                  ),
+                ),
+                if (register)
+                  Center(
+                    child: TextButton.icon(
+                      onPressed: () => widget.onOpen('adminLogin'),
+                      icon: const Icon(Icons.admin_panel_settings_rounded, size: 18),
+                      label: const Text('Admin Login'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: brand,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
